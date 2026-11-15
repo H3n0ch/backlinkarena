@@ -1,0 +1,200 @@
+@import "tailwindcss";
+
+/*
+  Backlink Arena palette: warm white, stone ink, orange primary, teal opponent.
+  Token names kept stable: "red" = orange (side A / primary), "blue" = teal (side B).
+*/
+:root {
+  --paper: #ffffff;
+  --cream: #fff8f1;
+  --card: #ffffff;
+  --ink: #1c1917;
+  --muted: #78716c;
+  --line: #e7e5e4;
+  --red: #f97316;
+  --red-dark: #ea580c;
+  --red-soft: #fff1e6;
+  --blue: #0d9488;
+  --blue-soft: #e6f7f5;
+  --sun: #fbbf24;
+  --mint: #16a34a;
+  --mint-soft: #dcfce7;
+
+  /* Gradients */
+  --grad-brand: linear-gradient(120deg, #fbbf24 0%, #f97316 38%, #ea580c 62%, #e11d48 100%);
+  --grad-brand-soft: linear-gradient(135deg, #fff7ed 0%, #ffe4e6 55%, #ecfeff 100%);
+  --grad-dark: radial-gradient(120% 90% at 100% 0%, rgb(249 115 22 / 0.35) 0%, transparent 55%),
+    radial-gradient(90% 80% at 0% 100%, rgb(13 148 136 / 0.3) 0%, transparent 60%),
+    linear-gradient(160deg, #292524 0%, #1c1917 55%, #0c0a09 100%);
+  --grad-card: linear-gradient(180deg, #ffffff 0%, #fffaf5 100%);
+  --grad-line: linear-gradient(90deg, transparent, #f97316 25%, #e11d48 50%, #0d9488 75%, transparent);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-cream: var(--cream);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-red: var(--red);
+  --color-red-dark: var(--red-dark);
+  --color-red-soft: var(--red-soft);
+  --color-blue: var(--blue);
+  --color-blue-soft: var(--blue-soft);
+  --color-sun: var(--sun);
+  --color-mint: var(--mint);
+  --color-mint-soft: var(--mint-soft);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+body {
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(60rem 36rem at 12% -6rem, rgb(251 146 60 / 0.22), transparent 70%),
+    radial-gradient(52rem 32rem at 92% 4rem, rgb(225 29 72 / 0.12), transparent 70%),
+    radial-gradient(48rem 40rem at 50% 120%, rgb(13 148 136 / 0.10), transparent 70%),
+    linear-gradient(180deg, #fffaf5 0%, #ffffff 40rem);
+  background-repeat: no-repeat;
+}
+
+/* Brand gradient on primary / dark buttons everywhere (.btn + bg-red / bg-ink) */
+.btn.bg-red,
+a.bg-red.text-white,
+button.bg-red.text-white {
+  background-image: var(--grad-brand);
+  background-size: 160% 100%;
+  background-position: 0% 50%;
+  border-color: transparent;
+  box-shadow: 0 6px 18px -6px rgb(234 88 12 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.25);
+  transition: background-position 400ms ease, box-shadow 200ms, transform 80ms, opacity 120ms;
+}
+.btn.bg-red:hover:not(:disabled),
+a.bg-red.text-white:hover,
+button.bg-red.text-white:hover:not(:disabled) {
+  background-position: 100% 50%;
+  filter: none;
+  box-shadow: 0 10px 24px -8px rgb(225 29 72 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.25);
+}
+.btn.bg-ink {
+  background-image: linear-gradient(160deg, #44403c 0%, #1c1917 60%, #0c0a09 100%);
+  box-shadow: 0 6px 16px -8px rgb(12 10 9 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.12);
+}
+
+@utility card {
+  background: var(--grad-card);
+  border: 1px solid var(--line);
+  border-radius: 0.875rem;
+  box-shadow: 0 1px 2px rgb(28 25 23 / 0.04), 0 12px 32px -18px rgb(234 88 12 / 0.18);
+}
+
+/* Gradient-filled text */
+@utility text-gradient {
+  background-image: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  /* italic glyphs overhang; keep them from clipping */
+  padding-right: 0.08em;
+}
+
+/* 2px gradient border around a light surface */
+@utility border-gradient {
+  border: 2px solid transparent;
+  background:
+    var(--grad-card) padding-box,
+    var(--grad-brand) border-box;
+  box-shadow: 0 20px 48px -24px rgb(234 88 12 / 0.45);
+}
+
+/* Dark premium surface: ink with orange + teal glows */
+@utility bg-dark-gradient {
+  background: var(--grad-dark);
+}
+
+/* Soft warm wash for highlight boxes */
+@utility bg-soft-gradient {
+  background: var(--grad-brand-soft);
+}
+
+/* Thin rainbow hairline */
+@utility line-gradient {
+  height: 1px;
+  background: var(--grad-line);
+}
+
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  padding: 0.6rem 1.1rem;
+  font-weight: 700;
+  transition: filter 120ms, transform 80ms, opacity 120ms;
+  cursor: pointer;
+  &:hover:not(:disabled) {
+    filter: brightness(0.96);
+  }
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@utility field {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--card);
+  padding: 0.65rem 0.85rem;
+  font-size: 1rem;
+  &:focus {
+    outline: 2px solid var(--red);
+    outline-offset: 0;
+  }
+}
+
+/* Big italic display headings */
+@utility headline {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+}
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.animate-pop {
+  animation: pop 320ms ease-out;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+@keyframes shimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 5s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop { animation: none; }
+  .animate-shimmer { animation: none; }
+}

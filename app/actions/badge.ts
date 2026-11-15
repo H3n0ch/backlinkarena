@@ -1,0 +1,92 @@
+"use server";
+
+import { refresh } from "next/cache";
+import { getUser } from "@/lib/auth";
+import { arenaHosts, findBacklink } from "@/lib/badge";
+import { skipQualifying } from "@/lib/entries";
+import { SITE_URL } from "@/lib/env";
+import { fetchHtml } from "@/lib/metadata";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import type { ActionResult } from "@/lib/types";
+
+/** Same site or a subdomain of it (www., blog., ...). */
+function belongsTo(host: string, domain: string) {
+  return host === domain || host.endsWith(`.${domain}`);
+}
+
+/**
+ * Owner clicks "Check my badge": we fetch the page and look for a dofollow link to Backlink Arena.
+ *  - found + dofollow  -> badge verified, entry upgraded so the product skips qualifying
+ *  - found + nofollow  -> tell them to remove rel="nofollow"
+ *  - not found         -> marked pending for a manual check (e.g. sites that render with JavaScript)
+ */
+export async function checkBadge(productId: string, pageInput?: string): Promise<ActionResult> {
+  const user = await getUser();
+  if (!user) return { ok: false, error: "Please log in first." };
+
+  const db = createSupabaseAdmin();
+  const { data: product } = await db
+    .from("products")
+    .select("id, owner_id, url, domain, badge_status")
+    .eq("id", productId)
+    .maybeSingle();
+  if (!product || product.owner_id !== user.id) return { ok: false, error: "Product not found." };
+  if (product.badge_status === "verified") {
+    const t = await skipQualifying(db, product.id, "badge");
+    refresh();
+    return { ok: true, message: t ? `Already verified. You're in ${t} without qualifying.` : "Already verified." };
+  }
+
+  // Which page to check: the given page on their own domain, or the homepage.
+  let page = product.url as string;
+  const raw = (pageInput ?? "").trim();
+  if (raw) {
+    try {
+      const u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+      if (!belongsTo(u.hostname.toLowerCase(), product.domain as string)) {
+        return { ok: false, error: `The page must be on ${product.domain}.` };
+      }
+      page = u.toString();
+    } catch {
+      return { ok: false, error: "That page address doesn't look right." };
+    }
+  }
+
+  let result = { found: false, dofollow: false };
+  try {
+    const { html, finalUrl } = await fetchHtml(page, 3_000_000);
+    if (html) result = findBacklink(html, finalUrl, arenaHosts(SITE_URL));
+  } catch {
+    // Unreachable page: fall through to manual check.
+  }
+
+  if (result.found && result.dofollow) {
+    await db.from("products").update({ badge_status: "verified" }).eq("id", product.id);
+    const t = await skipQualifying(db, product.id, "badge");
+    refresh();
+    return {
+      ok: true,
+      message: t
+        ? `✅ Badge found! You skip qualifying and go straight into the bracket of ${t}.`
+        : "✅ Badge found and verified! You'll skip qualifying in the next tournament.",
+    };
+  }
+
+  if (result.found && !result.dofollow) {
+    return {
+      ok: false,
+      error: 'We found the link, but it has rel="nofollow" (or sponsored/ugc). Remove that and check again.',
+    };
+  }
+
+  // Not found automatically: queue it for a manual check by the admin.
+  if (product.badge_status === "none") {
+    await db.from("products").update({ badge_status: "pending" }).eq("id", product.id);
+  }
+  refresh();
+  return {
+    ok: true,
+    message:
+      "We couldn't find the badge on that page automatically. If you just added it, check the page address and try again. Otherwise we'll check it by hand soon.",
+  };
+}
