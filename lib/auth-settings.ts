@@ -1,4 +1,5 @@
 import "server-only";
+import { connection } from "next/server";
 import { SUPABASE_ANON_KEY, SUPABASE_CONFIGURED, SUPABASE_URL } from "@/lib/env";
 
 let cached: { google: boolean; at: number } | null = null;
@@ -7,6 +8,8 @@ const TTL_MS = 5 * 60 * 1000;
 /** Whether Google sign-in is switched on in Supabase (cached for 5 minutes). */
 export async function isGoogleLoginEnabled(): Promise<boolean> {
   if (!SUPABASE_CONFIGURED) return false;
+  // Read at request time (not during prerender), so Date.now() is allowed.
+  await connection();
   if (cached && Date.now() - cached.at < TTL_MS) return cached.google;
   try {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
