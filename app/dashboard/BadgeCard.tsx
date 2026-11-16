@@ -40,6 +40,7 @@ export function BadgeCard({
   const [theme, setTheme] = useState<Theme>("light");
   const [format, setFormat] = useState<Format>("html");
   const [page, setPage] = useState("");
+  const [showRules, setShowRules] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
 
@@ -51,11 +52,37 @@ export function BadgeCard({
     <div className="mt-6 rounded-2xl border border-line bg-blue-soft/40 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="font-display text-lg font-extrabold">Link to us, skip qualifying</p>
+          <p className="flex items-center gap-2 font-display text-lg font-extrabold">
+            Link to us, skip qualifying
+            <button
+              type="button"
+              onClick={() => setShowRules((v) => !v)}
+              aria-expanded={showRules}
+              aria-label="Badge rules"
+              title="Badge rules"
+              className={`inline-flex size-5 items-center justify-center rounded-full border text-[11px] font-bold italic transition ${
+                showRules ? "border-ink bg-ink text-white" : "border-line bg-white text-muted hover:border-ink hover:text-ink"
+              }`}
+            >
+              i
+            </button>
+          </p>
           <p className="mt-1 text-sm">
             Put a link to Backlink Arena on your website. As soon as we find it, you go{" "}
             <strong>straight into the bracket</strong>, no qualifying votes needed.
           </p>
+          {showRules && (
+            <div className="mt-3 rounded-xl border border-line bg-white p-3 text-sm">
+              <p className="font-bold">Badge rules</p>
+              <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-5">
+                <li>Put the badge on a page of your own site (or a subdomain), ideally the footer.</li>
+                <li>Use a normal link: no nofollow, sponsored or ugc.</li>
+                <li>Keep it live. We may check it again at any time.</li>
+                <li>If it&apos;s removed, you can lose your guaranteed spot and go back to free qualifying.</li>
+                <li>Your spot never adds votes inside a match.</li>
+              </ul>
+            </div>
+          )}
         </div>
         {badgeStatus === "verified" && (
           <span className="rounded-full bg-mint-soft px-3 py-1 text-sm font-bold text-mint">✅ Verified</span>

@@ -2,7 +2,9 @@ import type { PostgrestError } from "@supabase/supabase-js";
 
 const MESSAGES: Record<string, string> = {
   RATE_LIMIT: "Slow down: you can cast up to 30 votes per hour.",
+  IP_LIMIT: "Too many votes from this network for this matchup.",
   MATCH_CLOSED: "This matchup is closed.",
+  TOURNAMENT_PAUSED: "The tournament is paused for a moment. Please try again soon.",
   NOT_IN_MATCH: "That product isn't in this matchup.",
   OWN_MATCH: "You can't vote in your own matchup.",
   OWN_PRODUCT: "You can't vote for your own product.",

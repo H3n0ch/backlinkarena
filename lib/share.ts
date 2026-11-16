@@ -15,8 +15,8 @@ export function defaultPostText(link: string) {
   return `I'm in a 1v1 battle on Backlink Arena. One click helps me win: ${link} #contest`;
 }
 
-export function shareLinks(link: string) {
-  const text = defaultPostText(link);
+export function shareLinks(link: string, customText?: string) {
+  const text = customText ?? defaultPostText(link);
   // X adds the url itself, so keep it out of the text to avoid a duplicate.
   const xText = text.replace(` ${link}`, "");
   return {

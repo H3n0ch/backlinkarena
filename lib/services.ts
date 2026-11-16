@@ -67,3 +67,19 @@ export const SERVICES: Service[] = [
   },
 ];
 
+/** Participant offer: 30% off, earned by playing and sharing a matchup. Valid for OFFER_DAYS. */
+export const PARTICIPANT_DISCOUNT = 0.3;
+export const OFFER_DAYS = 7;
+
+/** "$870" -> "$609" at the participant discount. */
+export function participantPrice(price: string): string {
+  const n = Number(price.replace(/[^\d.]/g, ""));
+  if (!n) return price;
+  return `$${Math.round(n * (1 - PARTICIPANT_DISCOUNT)).toLocaleString("en-US")}`;
+}
+
+/** Every service + tier as a "Service · Tier" option for the lead form. */
+export const SERVICE_OPTIONS: string[] = SERVICES.flatMap((s) =>
+  s.tiers ? s.tiers.map((t) => `${s.name} · ${t.title}`) : [s.name],
+);
+

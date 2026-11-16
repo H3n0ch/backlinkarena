@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getUser } from "@/lib/auth";
-import { isGoogleLoginEnabled } from "@/lib/auth-settings";
 import { getMatchView } from "@/lib/data";
 import { matchPath, matchShareUrl } from "@/lib/share";
+import { guestUnvotedOpenMatches, readGuestId } from "@/lib/guest";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { roundName } from "@/lib/time";
 import { cleanRef, safeHttpUrl } from "@/lib/url";
+import { TrackView } from "@/components/Track";
 import { MatchArena, type ArenaProduct } from "./MatchArena";
 
 /** Shared by /match/[id] and the readable /vs/[pair] route. */
@@ -46,12 +48,7 @@ export async function MatchScreen({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   // Matchup, visitor and query string in parallel: nothing here waits on the other.
-  const [view, user, sp, googleEnabled] = await Promise.all([
-    id ? getMatchView(id) : null,
-    getUser(),
-    searchParams,
-    isGoogleLoginEnabled(),
-  ]);
+  const [view, user, sp] = await Promise.all([id ? getMatchView(id) : null, getUser(), searchParams]);
   if (!view) notFound();
   const ref = cleanRef(sp.ref);
   const { match, tournament, a, b, counts } = view;
@@ -71,12 +68,33 @@ export async function MatchScreen({
     const rest = ((remaining ?? []) as string[]).filter((m) => m !== match.id);
     nextMatchId = rest[0] ?? null;
     allDone = Boolean(votedFor) && rest.length === 0;
+  } else {
+    // Guest: one vote per browser, remembered by the ba_voter cookie.
+    const guestId = await readGuestId();
+    const [vote, remaining] = await Promise.all([
+      guestId
+        ? createSupabaseAdmin()
+            .from("votes")
+            .select("product_id")
+            .eq("match_id", match.id)
+            .eq("guest_id", guestId)
+            .maybeSingle()
+            .then(({ data }) => data)
+        : null,
+      guestUnvotedOpenMatches(guestId),
+    ]);
+    votedFor = (vote?.product_id as string | undefined) ?? null;
+    const rest = remaining.filter((m) => m !== match.id);
+    nextMatchId = rest[0] ?? null;
+    allDone = Boolean(votedFor) && rest.length === 0;
   }
   const ownsA = Boolean(user && a?.owner_id === user.id);
   const ownsB = Boolean(user && b?.owner_id === user.id);
   const path = matchPath(match, a?.slug, b?.slug);
 
   return (
+    <>
+    <TrackView matchId={match.id} />
     <MatchArena
       matchId={match.id}
       tournamentName={tournament.name}
@@ -90,8 +108,8 @@ export async function MatchScreen({
       initialWinner={match.winner_product_id}
       viewer={{ loggedIn: Boolean(user), owns: ownsA || ownsB, votedFor, nextMatchId, allDone }}
       refSlug={ref}
-      googleEnabled={googleEnabled}
       shareLink={matchShareUrl(path, ownsA ? a?.slug : ownsB ? b?.slug : ref)}
     />
+    </>
   );
 }

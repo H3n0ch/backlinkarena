@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ProductLogo } from "@/components/ProductLogo";
+import { PREMIUM_FRAME } from "@/components/premium";
 import { matchPath } from "@/lib/share";
 import type { Counts, Match, Product } from "@/lib/types";
 
@@ -21,8 +22,10 @@ type Column =
   the pair's two tiles, and an inner stub from the column edge to the next tile.
 */
 
-const DOT = "border-dotted border-stone-400";
-const HOT = "border-solid border-red";
+const DOT = "border-dashed border-white/30";
+const HOT = "border-solid border-amber-400 shadow-[0_0_10px_rgb(251_191_36/0.7)]";
+
+const FRAME_STYLE = PREMIUM_FRAME;
 
 export function BracketBoard({
   size,
@@ -30,12 +33,14 @@ export function BracketBoard({
   products,
   projected,
   champion,
+  header,
 }: {
   size: number;
   matches: BoardMatch[];
   products: Map<string, Product>;
   projected?: Product[];
   champion?: Product | null;
+  header?: React.ReactNode;
 }) {
   const rounds = Math.log2(size);
   const byKey = new Map(matches.map((m) => [`${m.round}-${m.position}`, m]));
@@ -77,11 +82,18 @@ export function BracketBoard({
     c.kind === "trophy" ? "Winner" : c.kind === "final" ? "Final" : roundLabel(c.r, size);
 
   const tint = (c: Column) =>
-    c.kind === "trophy" ? "bg-red-soft" : c.kind === "final" ? "bg-red-soft/60" : c.r === currentRound ? "bg-cream" : "";
+    c.kind === "trophy"
+      ? ""
+      : c.kind === "final"
+        ? "bg-amber-300/[0.035]"
+        : c.r === currentRound
+          ? "bg-white/[0.03]"
+          : "";
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
-      <div className="grid" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}>
+    <div className="relative overflow-hidden rounded-[1.25rem]" style={FRAME_STYLE}>
+      {header && <div className="relative border-b border-white/10 px-4 py-4 sm:px-6 sm:py-5">{header}</div>}
+      <div className="relative grid" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}>
         {columns.map((c) => (
           <div key={c.key} className={`flex flex-col ${tint(c)}`}>
             <Label text={label(c)} live={c.kind === "side" && c.r === currentRound} />
@@ -108,8 +120,6 @@ export function BracketBoard({
                 })
               )}
             </div>
-
-            <Label text={label(c)} live={false} bottom />
           </div>
         ))}
       </div>
@@ -122,14 +132,20 @@ function roundLabel(r: number, size: number) {
   return left === 4 ? "Semifinal" : left === 8 ? "Quarterfinal" : `Round ${r}`;
 }
 
-function Label({ text, live, bottom }: { text: string; live: boolean; bottom?: boolean }) {
+function Label({ text, live }: { text: string; live: boolean }) {
+  const gold = text === "Final" || text === "Winner";
   return (
     <p
-      className={`flex items-center justify-center gap-1 py-2.5 text-center text-[8px] font-extrabold uppercase tracking-wider sm:text-[11px] ${
-        bottom ? "border-t border-line" : "border-b border-line"
-      } ${live ? "text-red-dark" : "text-muted"}`}
+      className={`flex items-center justify-center gap-1.5 border-b border-white/10 py-3 text-center text-[8px] font-bold uppercase tracking-wider sm:text-[10px] sm:tracking-[0.2em] ${
+        live ? "text-amber-300" : gold ? "text-amber-200/80" : "text-white/40"
+      }`}
     >
-      {live && <span className="hidden h-1.5 w-1.5 animate-pulse rounded-full bg-red sm:inline-block" />}
+      {live && (
+        <span className="relative hidden h-1.5 w-1.5 sm:inline-flex">
+          <span className="absolute inset-0 animate-ping rounded-full bg-amber-400/70" />
+          <span className="relative h-1.5 w-1.5 rounded-full bg-amber-400" />
+        </span>
+      )}
       <span className="truncate sm:hidden">
         {text === "Quarterfinal" ? "QF" : text === "Semifinal" ? "SF" : text}
       </span>
@@ -177,7 +193,7 @@ function PairBox({ side, first, pair, invite }: { side: Side; first: boolean; pa
       <span
         aria-hidden="true"
         className={`absolute top-1/4 bottom-1/4 ${side === "L" ? "right-0 border-r-2" : "left-0 border-l-2"} ${
-          decided ? "border-solid border-red/60" : DOT
+          decided ? "border-solid border-amber-400/60" : DOT
         }`}
       />
       <Row side={side} inner={!first} outer hot={aWon}>
@@ -205,12 +221,17 @@ function FinalSlot({ side, pair }: { side: Side; pair: Pair }) {
 function Trophy({ champion }: { champion?: Product | null }) {
   if (champion) {
     return (
-      <Link href={`/p/${champion.slug}`} title={champion.name} className="flex flex-col items-center">
-        <span className="text-xl sm:text-3xl" aria-hidden="true">
+      <Link href={`/p/${champion.slug}`} title={champion.name} className="group flex flex-col items-center">
+        <span className="mb-1 text-lg drop-shadow-[0_0_12px_rgb(251_191_36/0.8)] sm:text-3xl" aria-hidden="true">
           🏆
         </span>
-        <Tile product={champion} won big />
-        <span className="mt-1 hidden max-w-24 truncate text-xs font-extrabold text-red-dark lg:block">
+        <span className="relative">
+          <span aria-hidden="true" className="absolute -inset-3 rounded-2xl bg-amber-400/30 blur-xl" />
+          <span className="relative block">
+            <Tile product={champion} won big />
+          </span>
+        </span>
+        <span className="text-gold mt-2 hidden max-w-24 truncate font-display text-xs font-extrabold uppercase lg:block">
           {champion.name}
         </span>
       </Link>
@@ -218,10 +239,22 @@ function Trophy({ champion }: { champion?: Product | null }) {
   }
   return (
     <div className="flex flex-col items-center text-center">
-      <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-red bg-white text-xl sm:h-20 sm:w-20 sm:text-4xl">
-        🏆
+      <span className="relative flex h-11 w-11 items-center justify-center sm:h-20 sm:w-20 lg:h-24 lg:w-24">
+        <span aria-hidden="true" className="absolute -inset-2 rounded-full bg-amber-400/25 blur-xl" />
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 rounded-full bg-[conic-gradient(from_200deg,#fde68a,#f59e0b,#fff7ed,#b45309,#fde68a)] p-[2px]"
+        >
+          <span className="block h-full w-full rounded-full bg-[radial-gradient(circle_at_50%_35%,#2a2420,#0c0a09)]" />
+        </span>
+        <span className="relative text-xl drop-shadow-[0_0_10px_rgb(251_191_36/0.6)] sm:text-4xl" aria-hidden="true">
+          🏆
+        </span>
       </span>
-      <span className="mt-2 hidden text-[11px] font-extrabold uppercase leading-tight text-red-dark sm:block">
+      <span className="mt-3 hidden text-[9px] font-semibold uppercase tracking-[0.25em] text-white/45 sm:block">
+        Grand prize
+      </span>
+      <span className="text-gold mt-1 hidden font-display text-sm font-extrabold uppercase leading-tight sm:block lg:text-base">
         DA 50+
         <br />
         backlink
@@ -236,9 +269,9 @@ const TILE_BIG = "h-9 w-9 sm:h-16 sm:w-16 lg:h-20 lg:w-20";
 function Tile({ product, won, lost, big }: { product: Product; won?: boolean; lost?: boolean; big?: boolean }) {
   return (
     <span
-      className={`block rounded-xl bg-white ${big ? TILE_BIG : TILE} ${lost ? "opacity-35 grayscale" : ""} ${
-        won ? "ring-2 ring-red ring-offset-2" : ""
-      }`}
+      className={`block rounded-xl bg-white ring-1 ring-white/15 shadow-[0_10px_24px_-10px_rgb(0_0_0/0.9)] ${big ? TILE_BIG : TILE} ${
+        lost ? "opacity-30 grayscale" : ""
+      } ${won ? "ring-2! ring-amber-400! ring-offset-2 ring-offset-stone-950 shadow-[0_0_22px_-2px_rgb(251_191_36/0.6)]" : ""}`}
     >
       <ProductLogo src={product.logo_url} name={product.name} size={80} className="h-full! w-full! rounded-xl! p-1!" />
     </span>
@@ -272,22 +305,22 @@ function Slot({
       <Link
         href="/join"
         title="Claim this spot"
-        className={`flex items-center justify-center rounded-xl border-2 border-dashed border-red/60 bg-white text-base font-extrabold text-red transition-colors hover:bg-red-soft sm:text-2xl ${box}`}
+        className={`flex items-center justify-center rounded-xl border border-dashed border-amber-300/50 bg-amber-300/[0.06] text-base font-light text-amber-200 transition-all hover:border-amber-300 hover:bg-amber-300/15 hover:shadow-[0_0_20px_-4px_rgb(251_191_36/0.6)] sm:text-2xl ${box}`}
       >
         +
       </Link>
     ) : (
-      <span className={`block rounded-xl border-2 border-dashed border-stone-300 bg-white ${box}`} />
+      <span className={`block rounded-xl border border-dashed border-white/15 bg-white/[0.03] ${box}`} />
     );
   }
   return (
     <Link
       href={match && href ? href : `/p/${product.slug}`}
       title={product.name}
-      className="group relative block transition-transform hover:-translate-y-0.5"
+      className="group relative block transition-transform duration-200 hover:-translate-y-0.5 hover:scale-105"
     >
       <Tile product={product} won={won} lost={lost} big={big} />
-      <span className="pointer-events-none absolute left-1/2 top-full mt-1 hidden w-24 -translate-x-1/2 truncate text-center text-[11px] font-semibold text-ink lg:block">
+      <span className="pointer-events-none absolute left-1/2 top-full mt-1 hidden w-24 -translate-x-1/2 truncate text-center text-[11px] font-medium text-white/65 group-hover:text-white lg:block">
         {product.name}
       </span>
     </Link>

@@ -9,13 +9,35 @@ const DRAFT_KEY = "ba:join-draft";
 
 type Draft = SitePreview & { category: string };
 
+// localStorage, not sessionStorage: the magic link usually opens in a NEW tab, which has
+// its own empty sessionStorage. Drafts expire after 2 hours.
+const DRAFT_TTL_MS = 2 * 3600_000;
+
 function readDraft(): Draft | null {
   try {
-    const raw = sessionStorage.getItem(DRAFT_KEY);
-    return raw ? (JSON.parse(raw) as Draft) : null;
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const { draft, savedAt } = JSON.parse(raw) as { draft: Draft; savedAt: number };
+    if (!draft || Date.now() - savedAt > DRAFT_TTL_MS) {
+      localStorage.removeItem(DRAFT_KEY);
+      return null;
+    }
+    return draft;
   } catch {
     return null;
   }
+}
+
+function writeDraft(draft: Draft) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ draft, savedAt: Date.now() }));
+  } catch {}
+}
+
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {}
 }
 
 export function JoinFlow() {
@@ -26,6 +48,10 @@ export function JoinFlow() {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const autoRan = useRef(false);
+  // Path picked on the pricing card (badge / pass), carried through login to the dashboard.
+  const planParam = params.get("plan");
+  const plan = planParam === "badge" || planParam === "pass" ? planParam : null;
+  const planQuery = plan ? `&plan=${plan}` : "";
 
   function preview(target: string) {
     setError(null);
@@ -43,34 +69,35 @@ export function JoinFlow() {
     const saved = params.get("resume") ? readDraft() : null;
     const initial = params.get("url");
     const t = setTimeout(() => {
-      if (saved) setDraft(saved);
-      else if (initial) preview(initial);
+      if (saved) {
+        // Back from login: show the draft and finish saving it without another click.
+        setDraft(saved);
+        save(saved, true);
+      } else if (initial) preview(initial);
     }, 0);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function save() {
-    if (!draft) return;
+  function save(d: Draft | null = draft, resumed = false) {
+    if (!d) return;
     setError(null);
     start(async () => {
       const r = await createProduct({
-        url: draft.url,
-        name: draft.name,
-        description: draft.description,
-        logoUrl: draft.logoUrl ?? "",
-        category: draft.category,
+        url: d.url,
+        name: d.name,
+        description: d.description,
+        logoUrl: d.logoUrl ?? "",
+        category: d.category,
       });
       if (r.ok && r.data) {
-        try {
-          sessionStorage.removeItem(DRAFT_KEY);
-        } catch {}
-        router.push(`/dashboard?joined=${r.data.slug}`);
+        clearDraft();
+        router.push(`/dashboard?joined=${r.data.slug}${planQuery}`);
       } else if (!r.ok && r.error === "Please log in first.") {
-        try {
-          sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-        } catch {}
-        router.push(`/login?next=${encodeURIComponent("/join?resume=1")}`);
+        // Auto-resume without a session (link opened on another device): let them retry by hand.
+        if (resumed) return;
+        writeDraft(d);
+        router.push(`/login?next=${encodeURIComponent(`/join?resume=1${planQuery}`)}`);
       } else if (!r.ok) {
         setError(r.error);
       }
@@ -139,11 +166,14 @@ export function JoinFlow() {
         Category / niche
         <input
           className="field"
-          placeholder="e.g. SaaS, e-commerce, fintech"
+          placeholder="e.g. Marketing SaaS, Real estate, Fitness"
           value={draft.category}
           maxLength={60}
           onChange={(e) => setDraft({ ...draft, category: e.target.value })}
         />
+        <span className="text-xs font-normal text-muted">
+          Helps us find a good round-1 matchup for you. Never a direct competitor.
+        </span>
       </label>
       <label className="flex flex-col gap-1 text-sm font-semibold">
         Logo URL
@@ -156,7 +186,7 @@ export function JoinFlow() {
       </label>
 
       <div className="flex flex-col gap-2 sm:flex-row">
-        <button className="btn flex-1 bg-red text-white" onClick={save} disabled={pending || !draft.name.trim()}>
+        <button className="btn flex-1 bg-red text-white" onClick={() => save()} disabled={pending || !draft.name.trim()}>
           {pending ? "Saving…" : "Enter the arena"}
         </button>
         <button className="btn bg-card" onClick={() => setDraft(null)} disabled={pending}>

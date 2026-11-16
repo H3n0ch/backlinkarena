@@ -23,6 +23,10 @@ export type Tournament = {
   status: TournamentStatus;
   bracket_size: number;
   qualifying_ends_at: string | null;
+  /** Qualifying time ran out before the bracket was full: still open, starts once full. */
+  qualifying_overtime?: boolean;
+  /** Set while an admin has paused the tournament (migration 0009). */
+  paused_at?: string | null;
   match_hours: number;
   winner_product_id: string | null;
   prize_url: string | null;
@@ -37,6 +41,12 @@ export type Entry = {
   entry_path: EntryPath;
   qualified: boolean;
   eliminated_round: number | null;
+  /** Admin correction added to the qualifying vote count (migration 0005). */
+  vote_adjust?: number;
+  /** Bracket seat placed by the admin, 1..bracket_size (migration 0009). */
+  seat?: number | null;
+  disqualified_at?: string | null;
+  dq_reason?: string | null;
   created_at: string;
 };
 
@@ -51,6 +61,9 @@ export type Match = {
   ends_at: string;
   winner_product_id: string | null;
   status: "open" | "closed";
+  /** Admin corrections added to each side's vote count (migration 0005). */
+  a_adjust?: number;
+  b_adjust?: number;
 };
 
 export type Counts = { a_votes: number; b_votes: number };

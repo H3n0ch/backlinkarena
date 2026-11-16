@@ -49,29 +49,52 @@ const LinkIcon = (
   </LineIcon>
 );
 
-export function ShareButtons({ link, title = "Share this matchup" }: { link: string; title?: string }) {
-  const s = shareLinks(link);
+/* Fixed colors (inline) so the buttons stay readable on light and dark cards alike. */
+const STYLE = {
+  x: { backgroundColor: "#000000", color: "#ffffff", borderColor: "#000000" },
+  linkedin: { backgroundColor: "#0A66C2", color: "#ffffff", borderColor: "#0A66C2" },
+  whatsapp: { backgroundColor: "#25D366", color: "#ffffff", borderColor: "#25D366" },
+  copy: { backgroundColor: "#ffffff", color: "#1c1917", borderColor: "#e7e5e4" },
+} as const;
+
+/** The share buttons on their own (brand colors + logos). */
+export function ShareButtonRow({ link, text }: { link: string; text?: string }) {
+  const s = shareLinks(link, text);
   const base = "btn text-sm py-2! px-3!";
-  const brand = `${base} border-transparent text-white`;
+  return (
+    <div className="flex flex-wrap gap-2">
+      <a className={base} style={STYLE.x} href={s.x} target="_blank" rel="noopener noreferrer">
+        <BrandIcon path={X_PATH} />
+        Post on X
+      </a>
+      <a className={base} style={STYLE.linkedin} href={s.linkedin} target="_blank" rel="noopener noreferrer">
+        <BrandIcon path={LINKEDIN_PATH} />
+        LinkedIn
+      </a>
+      <CopyButton text={s.text} label="Copy text" className={base} style={STYLE.copy} icon={CopyIcon} />
+      <a className={base} style={STYLE.whatsapp} href={s.whatsapp} target="_blank" rel="noopener noreferrer">
+        <BrandIcon path={WHATSAPP_PATH} />
+        WhatsApp
+      </a>
+      <CopyButton text={link} label="Copy link" className={base} style={STYLE.copy} icon={LinkIcon} />
+    </div>
+  );
+}
+
+export function ShareButtons({
+  link,
+  title = "Share this matchup",
+  text,
+}: {
+  link: string;
+  title?: string;
+  /** Post text (must contain the link); defaults to the standard matchup text. */
+  text?: string;
+}) {
   return (
     <div>
       <p className="mb-2 text-sm font-bold">{title}</p>
-      <div className="flex flex-wrap gap-2">
-        <a className={`${brand} bg-black`} href={s.x} target="_blank" rel="noopener noreferrer">
-          <BrandIcon path={X_PATH} />
-          Post on X
-        </a>
-        <a className={`${brand} bg-[#0A66C2]`} href={s.linkedin} target="_blank" rel="noopener noreferrer">
-          <BrandIcon path={LINKEDIN_PATH} />
-          LinkedIn
-        </a>
-        <CopyButton text={s.text} label="Copy text" className={`${base} bg-card`} icon={CopyIcon} />
-        <a className={`${brand} bg-[#25D366]`} href={s.whatsapp} target="_blank" rel="noopener noreferrer">
-          <BrandIcon path={WHATSAPP_PATH} />
-          WhatsApp
-        </a>
-        <CopyButton text={link} label="Copy link" className={`${base} bg-card`} icon={LinkIcon} />
-      </div>
+      <ShareButtonRow link={link} text={text} />
       <p className="mt-2 text-xs text-muted">LinkedIn doesn&apos;t prefill text, so copy it first.</p>
     </div>
   );

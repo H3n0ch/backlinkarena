@@ -56,9 +56,22 @@ export async function createProduct(
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
   const n = normalizeUrl(parsed.data.url);
   if (!n) return { ok: false, error: "That doesn't look like a website address." };
+  const supabase = await createSupabaseServer();
+
+  // Already yours (e.g. saved in another tab after the login link): treat as success.
+  const { data: mine } = await supabase
+    .from("products")
+    .select("id, slug")
+    .eq("owner_id", user.id)
+    .eq("domain", n.domain)
+    .maybeSingle();
+  if (mine) {
+    const entered = await enterActiveTournament(mine.id as string);
+    return { ok: true, data: { slug: mine.slug as string, entered } };
+  }
+
   if (await domainTaken(n.domain)) return { ok: false, error: `${n.domain} is already in the arena.` };
 
-  const supabase = await createSupabaseServer();
   const base = slugify(n.domain);
   let slug = base;
   let productId: string | null = null;

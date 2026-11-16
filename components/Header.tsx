@@ -53,7 +53,7 @@ async function UserLink() {
   }
   return (
     <>
-      {user.isAdmin && (
+      {user.isAdminAccount && (
         <Link href="/admin" className="px-2 text-sm font-semibold text-muted hover:text-ink">
           Admin
         </Link>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ProductLogo } from "@/components/ProductLogo";
+import { TrackedLink } from "@/components/Track";
 import { getProductBySlug, getProductHistory } from "@/lib/data";
 import { roundName } from "@/lib/time";
 import { safeHttpUrl } from "@/lib/url";
@@ -50,9 +51,9 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
         {href && (
           <div className="mt-5">
             {/* Intentionally dofollow: this link is part of what participants play for. */}
-            <a href={href} target="_blank" rel="noopener" className="btn bg-card">
+            <TrackedLink href={href} productId={product.id} className="btn bg-card">
               Visit {product.domain} ↗
-            </a>
+            </TrackedLink>
           </div>
         )}
       </div>

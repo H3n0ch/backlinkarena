@@ -10,7 +10,7 @@ import {
 } from "@/app/actions/admin";
 import type { ActionResult } from "@/lib/types";
 
-function useAction() {
+export function useAction() {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const run = (fn: () => Promise<ActionResult>) =>
@@ -58,7 +58,7 @@ export function ActionButton({
   );
 }
 
-function toLocalInput(iso: string | null, fallbackHours = 72) {
+export function toLocalInput(iso: string | null, fallbackHours = 72) {
   const d = iso ? new Date(iso) : new Date(Date.now() + fallbackHours * 3600_000);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;

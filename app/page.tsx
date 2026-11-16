@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { JoinField } from "@/components/JoinField";
+import { GOLD_TEXT, PREMIUM_FRAME } from "@/components/premium";
 import { ProductLogo } from "@/components/ProductLogo";
 import { Services } from "@/components/Services";
 import { TournamentSection } from "@/components/TournamentSection";
@@ -21,6 +22,7 @@ export default function Home() {
         <PastWinners />
       </Suspense>
 
+      <EveryoneWins />
       <Pricing />
       <Services />
       <Faq />
@@ -31,9 +33,46 @@ export default function Home() {
 /* ------------------------------------------------------------------ Hero */
 
 const STEPS = [
-  { n: "1", t: "Enter", d: "Add your website. Free entries play a short qualifying round." },
-  { n: "2", t: "Battle", d: "16 brands, 1v1 knockouts. Share your matchup and rally votes." },
-  { n: "3", t: "Win", d: "The champion gets a backlink on a real DA 50+ site in their niche." },
+  {
+    n: "01",
+    t: "Enter",
+    d: "Add your website. It gets its own page in the arena right away.",
+    // Door with an arrow going in
+    icon: (
+      <>
+        <path d="M14 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+        <path d="m9 17 5-5-5-5" />
+        <path d="M14 12H3" />
+      </>
+    ),
+  },
+  {
+    n: "02",
+    t: "Battle",
+    d: "16 brands, 1v1 knockouts. Every matchup puts you in front of a whole new crowd: your opponent's followers, plus everyone who comes to vote.",
+    // Crossed swords
+    icon: (
+      <>
+        <path d="M14.5 17.5 3 6V3h3l11.5 11.5" />
+        <path d="m13 19 6-6M16 16l4 4M19 21l2-2" />
+        <path d="M14.5 6.5 18 3h3v3l-3.5 3.5" />
+        <path d="m5 14 4 4M7 17l-3 3M3 19l2 2" />
+      </>
+    ),
+  },
+  {
+    n: "03",
+    t: "Win",
+    d: "The champion gets a backlink on a real DA 50+ site in their niche.",
+    // Trophy
+    icon: (
+      <>
+        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+        <path d="M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+        <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+      </>
+    ),
+  },
 ];
 
 function Hero() {
@@ -50,8 +89,8 @@ function Hero() {
         Battle for <span className="text-gradient animate-shimmer">backlinks.</span>
       </h1>
       <p className="mx-auto mt-5 max-w-xl text-base sm:text-lg">
-        Win a <strong>DA 50+ backlink</strong> in your niche. Strong backlinks shouldn&apos;t only be for companies
-        with big budgets. Play for one.
+        Win a <strong>DA 50+ backlink</strong> in your niche. Every brand shares its matchup to win votes, so your
+        site reaches <strong>audiences beyond your own</strong>.
       </p>
 
       <div className="relative mx-auto mt-7 max-w-lg">
@@ -70,14 +109,69 @@ function Hero() {
           <span className="text-red">?</span> How it works
           <span className="transition-transform group-open:rotate-180">⌄</span>
         </summary>
-        <ol className="mt-5 grid gap-3 text-left sm:grid-cols-3">
-          {STEPS.map((s) => (
-            <li key={s.n} className="card p-4">
-              <span className="headline text-gradient text-3xl">{s.n}</span>
-              <p className="mt-1 font-display text-lg font-extrabold">{s.t}</p>
-              <p className="text-sm text-muted">{s.d}</p>
-            </li>
-          ))}
+        <ol className="relative mt-6 grid gap-4 text-left sm:grid-cols-3">
+          {/* Gold connector behind the cards */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-[16%] top-12 hidden h-px bg-linear-to-r from-amber-300/0 via-amber-300/70 to-amber-300/0 sm:block"
+          />
+          {STEPS.map((s, i) => {
+            const last = i === STEPS.length - 1;
+            return (
+              <li
+                key={s.n}
+                className="group/step relative flex flex-col overflow-hidden rounded-[1.25rem] p-5 transition duration-300 hover:-translate-y-1"
+                style={PREMIUM_FRAME}
+              >
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-amber-200/60 to-transparent"
+                />
+                {/* Big faint step number */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -top-3 right-3 font-display text-7xl font-black italic opacity-15"
+                  style={GOLD_TEXT}
+                >
+                  {s.n}
+                </span>
+
+                {/* Icon medallion */}
+                <span className="relative flex size-14 items-center justify-center">
+                  <span
+                    aria-hidden="true"
+                    className={`absolute -inset-2 rounded-full blur-xl ${last ? "bg-amber-400/35" : "bg-orange-500/20"}`}
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-full bg-[conic-gradient(from_200deg,#fde68a,#f59e0b,#fff7ed,#b45309,#fde68a)] p-px"
+                  >
+                    <span className="block size-full rounded-full bg-[radial-gradient(circle_at_50%_35%,#2a2420,#0c0a09)]" />
+                  </span>
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    stroke={last ? "#fcd34d" : "#fde68a"}
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="relative transition-transform duration-300 group-hover/step:scale-110"
+                    aria-hidden="true"
+                  >
+                    {s.icon}
+                  </svg>
+                </span>
+
+                <p className="mt-4 text-[10px] font-semibold tracking-[0.28em] text-amber-200/70 uppercase">Step {s.n}</p>
+                <p className="mt-1 font-display text-2xl font-extrabold leading-tight" style={last ? GOLD_TEXT : { color: "#fff" }}>
+                  {s.t}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-white/65">{s.d}</p>
+              </li>
+            );
+          })}
         </ol>
       </details>
     </section>
@@ -114,7 +208,7 @@ async function SocialProof() {
 /* ------------------------------------------------------------ Tournament */
 
 async function Tournament() {
-  return <TournamentSection tournament={await getCurrentOrLastTournament()} />;
+  return <TournamentSection tournament={await getCurrentOrLastTournament()} carousel />;
 }
 
 /* ----------------------------------------------------------- Past winners */
@@ -154,6 +248,58 @@ async function PastWinners() {
   );
 }
 
+/* ---------------------------------------------------------- Everyone wins */
+
+const PERKS = [
+  {
+    icon: "🏟️",
+    t: "Your page in the arena",
+    d: "The moment you enter, your brand gets its own page with your logo, pitch and a way to visit your site.",
+  },
+  {
+    icon: "👀",
+    t: "Seen by every voter",
+    d: "Every matchup shows your logo, name and pitch to everyone who comes to vote. That's new eyes on your product.",
+  },
+  {
+    icon: "📣",
+    t: "New people discover you",
+    d: "Everyone wants to win, so every brand shares its matchup with its followers. Each share shows both sites, so people who've never heard of you find you for free.",
+  },
+  {
+    icon: "🏆",
+    t: "The champion's prize",
+    d: "The winner gets a backlink on a real DA 50+ site in their niche, placed by hand.",
+  },
+];
+
+function EveryoneWins() {
+  return (
+    <section className="mx-auto mt-24 max-w-5xl px-4">
+      <p className="text-gradient mx-auto w-fit text-center text-xs font-bold uppercase tracking-widest">
+        Not just for the winner
+      </p>
+      <h2 className="headline mt-2 text-center text-4xl sm:text-5xl">
+        Every entry <span className="text-gradient">gets something</span>
+      </h2>
+      <p className="mx-auto mt-3 max-w-lg text-center text-muted">
+        The DA 50+ backlink is the top prize. But from the moment you enter, your site is in front of an audience.
+      </p>
+      <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {PERKS.map((p, i) => (
+          <li key={p.t} className={`card flex flex-col p-5 ${i === PERKS.length - 1 ? "border-gradient" : ""}`}>
+            <span className="text-2xl" aria-hidden="true">
+              {p.icon}
+            </span>
+            <p className="mt-3 font-display text-lg font-extrabold leading-tight">{p.t}</p>
+            <p className="mt-1 text-sm text-muted">{p.d}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /* ---------------------------------------------------------------- Pricing */
 
 function Check() {
@@ -175,54 +321,55 @@ function Pricing() {
         Every path plays by the same rules. Nothing paid or earned adds votes inside a match.
       </p>
 
-      <div className="mt-10 grid gap-4 md:grid-cols-3">
+      <div className="mx-auto mt-10 grid max-w-4xl gap-4 md:grid-cols-2">
         <div className="card flex flex-col p-6">
           <p className="font-display text-lg font-extrabold">Free entry</p>
-          <p className="mt-1 text-sm text-muted">Play the qualifying round.</p>
+          <p className="mt-1 text-sm text-muted">Get voted into the bracket.</p>
           <p className="mt-4 font-display text-4xl font-extrabold">$0</p>
           <ul className="mt-5 flex flex-1 flex-col gap-2 text-sm">
-            <li><Check />Public product page with a dofollow link</li>
-            <li><Check />Qualifying leaderboard spot</li>
-            <li><Check />Top voted brands enter the bracket</li>
+            <li><Check />Your own product page in the arena</li>
+            <li><Check />Spot on the qualifying leaderboard</li>
+            <li><Check />Top voted brands fill the open bracket spots</li>
           </ul>
           <Link href="/join" className="btn mt-6 bg-card">
             Enter for free
           </Link>
         </div>
 
-        <div className="card flex flex-col p-6">
-          <p className="font-display text-lg font-extrabold">Badge entry</p>
-          <p className="mt-1 text-sm text-muted">Skip qualifying by featuring us.</p>
-          <p className="mt-4 font-display text-4xl font-extrabold">$0</p>
-          <ul className="mt-5 flex flex-1 flex-col gap-2 text-sm">
-            <li><Check />Everything in Free</li>
-            <li><Check />Add our badge to your site</li>
-            <li><Check />Verified by hand, then straight into the bracket</li>
-          </ul>
-          <Link href="/dashboard" className="btn mt-6 bg-card">
-            Get the badge
-          </Link>
-        </div>
-
         <div className="relative flex flex-col overflow-hidden rounded-[0.875rem] bg-dark-gradient p-6 text-white shadow-[0_24px_60px_-24px_rgb(234_88_12/0.6)] ring-1 ring-white/10 md:-my-3 md:py-9">
           <span aria-hidden="true" className="line-gradient absolute inset-x-0 top-0" />
           <span className="absolute right-4 top-4 rounded-full bg-[image:var(--grad-brand)] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider shadow">
-            Fastest
+            Skip qualifying
           </span>
-          <p className="headline text-2xl">Contender Pass</p>
-          <p className="mt-1 text-sm text-white/70">Skip qualifying, no badge needed.</p>
-          <p className="mt-4 font-display text-4xl font-extrabold">
-            <span className="text-gradient">$79</span>{" "}
-            <span className="text-sm font-semibold text-white/60">one-time</span>
-          </p>
+          <p className="headline text-2xl">Guaranteed spot</p>
+          <p className="mt-1 text-sm text-white/70">Straight into the next bracket. Pick how you pay:</p>
           <ul className="mt-5 flex flex-1 flex-col gap-2 text-sm">
             <li><Check />Everything in Free</li>
-            <li><Check />Straight into the bracket</li>
-            <li><Check />No badge on your site required</li>
+            <li><Check />No votes needed to get in</li>
+            <li><Check />Never adds votes inside a match</li>
           </ul>
-          <Link href="/dashboard" className="btn mt-6 border-red bg-red text-white">
-            Get the pass →
-          </Link>
+          <div className="mt-6 grid grid-cols-2 gap-2">
+            <Link
+              href="/join?plan=badge"
+              className="group flex flex-col rounded-xl bg-white/[0.06] p-3 ring-1 ring-white/15 transition hover:bg-white/[0.12] hover:ring-white/30"
+            >
+              <span className="font-display text-2xl font-extrabold">$0</span>
+              <span className="text-xs text-white/70">Add our badge to your site</span>
+              <span className="mt-2 text-sm font-bold">
+                Add the badge <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+              </span>
+            </Link>
+            <Link
+              href="/join?plan=pass"
+              className="group flex flex-col rounded-xl bg-[image:var(--grad-brand)] p-3 shadow-[0_10px_24px_-10px_rgb(234_88_12/0.8)] transition hover:brightness-110"
+            >
+              <span className="font-display text-2xl font-extrabold">$79</span>
+              <span className="text-xs text-white/85">No badge, one tournament</span>
+              <span className="mt-2 text-sm font-bold">
+                Pay $79 <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+              </span>
+            </Link>
+          </div>
         </div>
       </div>
     </section>
@@ -234,7 +381,7 @@ function Pricing() {
 const FAQ = [
   {
     q: "Is it really free?",
-    a: "Yes. Entering with your website and voting are free. The optional $79 Contender Pass only lets you skip the qualifying round.",
+    a: "Yes. Entering with your website and voting are free. Want to skip qualifying? Add our badge to your site for free, or pay $79 for a guaranteed spot in one tournament.",
   },
   {
     q: "How does a tournament work?",
@@ -246,15 +393,23 @@ const FAQ = [
   },
   {
     q: "Can I buy votes?",
-    a: "No. Nothing paid or earned adds votes inside a match. Each account gets one vote per matchup, and you can't vote in your own.",
+    a: "No. Nothing paid or earned adds votes inside a match. Everyone gets one vote per matchup, no sign-up needed, and you can't vote in your own.",
   },
   {
     q: "How does the qualifying round work?",
     a: "Free entries appear on a public leaderboard. Anyone logged in can vote once per brand. When qualifying ends, badge and pass holders take their spots first, then the most-voted brands fill the rest.",
   },
   {
+    q: "Why would I get exposure if I lose?",
+    a: "Your opponent shares the matchup with their audience to win votes. The preview shows both brands, and every visitor sees both sites side by side. Every share they make puts you in front of a new community beyond your own, people who would never have found you otherwise.",
+  },
+  {
+    q: "How are matchups paired?",
+    a: "We never pair you with a direct competitor. In round 1 we look for a brand whose audience could also like you, so each matchup opens a new door. After that, winners meet winners.",
+  },
+  {
     q: "What if I lose?",
-    a: "Every participant gets a discount offer for our backlink service after the tournament, and you can enter the next one.",
+    a: "You keep the visitors and attention your matchups brought in, and you see your numbers in your dashboard. You also get 30% off our backlink services for 7 days, and you can enter the next tournament.",
   },
 ];
 

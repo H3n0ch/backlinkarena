@@ -3,9 +3,27 @@
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
+import { safeNext } from "@/lib/url";
 
-export function safeNext(next: string | null): string {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+/** Plain-language reason for a failed login (send errors from Supabase, or ?error= from the callback). */
+function errorMessage(reason: string): string {
+  switch (reason) {
+    case "over_email_send_rate_limit":
+    case "over_request_rate_limit":
+    case "rate_limit":
+      return "Too many login emails right now, so this one wasn't sent. Please wait a few minutes and try again.";
+    case "used":
+      return "That link was already used. If you're not logged in yet, ask for a new one below.";
+    case "expired":
+      return "That link expired or was already used. Ask for a new one below.";
+    case "browser":
+      return "Open the link in the same browser where you asked for it (not inside your mail app), or ask for a new link here.";
+    case "email_address_invalid":
+    case "email_address_not_authorized":
+      return "We can't send a link to that address. Please check it or use another email.";
+    default:
+      return "Login failed. Please try again.";
+  }
 }
 
 export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
@@ -15,6 +33,7 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">(
     params.get("error") ? "error" : "idle",
   );
+  const [reason, setReason] = useState(params.get("error") ?? "");
 
   const callback = () =>
     `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
@@ -32,7 +51,10 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
       email,
       options: { emailRedirectTo: callback() },
     });
-    setState(error ? "error" : "sent");
+    if (error) {
+      setReason(error.status === 429 ? "rate_limit" : (error.code ?? ""));
+      setState("error");
+    } else setState("sent");
   }
 
   if (state === "sent") {
@@ -81,7 +103,7 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
         </button>
       </form>
       {state === "error" && (
-        <p className="text-sm font-semibold text-red">Login failed. Please try again.</p>
+        <p className="text-sm font-semibold text-red">{errorMessage(reason)}</p>
       )}
     </div>
   );

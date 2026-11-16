@@ -86,7 +86,11 @@ export async function startBracketNow(id: string): Promise<ActionResult> {
   const { data, error } = await db.rpc("advance_tournaments", { p_force_bracket: id });
   if (error) return { ok: false, error: error.message };
   const row = (data as { tournament: string; seeded: boolean | null }[]).find((r) => r.tournament === id);
-  if (row?.seeded === false) return { ok: false, error: "Not enough entries: at least 8 are needed." };
+  if (row?.seeded === false) {
+    const { count } = await db.from("entries").select("id", { count: "exact", head: true }).eq("tournament_id", id);
+    const { data: t } = await db.from("tournaments").select("bracket_size").eq("id", id).single();
+    return { ok: false, error: `Bracket isn't full yet: ${count ?? 0}/${t?.bracket_size ?? "?"} spots filled.` };
+  }
   return done("Bracket started.");
 }
 

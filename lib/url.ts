@@ -46,3 +46,8 @@ export function safeHttpUrl(value: string | null | undefined): string | null {
     return null;
   }
 }
+
+/** Only same-site paths are allowed as a post-login destination (no "//evil.com"). */
+export function safeNext(next: string | null | undefined): string {
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+}

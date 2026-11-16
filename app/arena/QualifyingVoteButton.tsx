@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { castQualifyingVote } from "@/app/actions/vote";
@@ -8,7 +7,6 @@ import { castQualifyingVote } from "@/app/actions/vote";
 export function QualifyingVoteButton(props: {
   tournamentId: string;
   productId: string;
-  loggedIn: boolean;
   own: boolean;
   voted: boolean;
 }) {
@@ -19,13 +17,7 @@ export function QualifyingVoteButton(props: {
   const cls = "btn shrink-0 text-sm py-1.5! px-3!";
 
   if (props.own) return <span className="shrink-0 text-xs font-semibold text-muted">Yours</span>;
-  if (!props.loggedIn) {
-    return (
-      <Link href="/login?next=/arena" className={`${cls} bg-red text-white`}>
-        Vote
-      </Link>
-    );
-  }
+  // No sign-in needed: logged-out visitors vote as a guest (one vote per browser).
   if (voted) return <span className={`${cls} bg-mint-soft`}>✓ Voted</span>;
 
   return (

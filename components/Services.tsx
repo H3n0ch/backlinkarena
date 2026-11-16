@@ -1,10 +1,12 @@
-import { CONTACT_EMAIL } from "@/lib/env";
+import Link from "next/link";
+import { LeadButton } from "@/components/LeadButton";
 import { SERVICES, type Service } from "@/lib/services";
 
-function quoteHref(service: Service) {
-  if (!CONTACT_EMAIL) return "/dashboard";
-  const subject = encodeURIComponent(`Backlink Arena: ${service.name}`);
-  return `mailto:${CONTACT_EMAIL}?subject=${subject}`;
+/** Option preselected in the lead form: the "Most popular" tier, else the first. */
+function defaultOption(s: Service) {
+  if (!s.tiers) return s.name;
+  const t = s.tiers.find((x) => x.tag === "Most popular") ?? s.tiers[0];
+  return `${s.name} · ${t.title}`;
 }
 
 function Check() {
@@ -73,19 +75,22 @@ export function Services() {
               ))}
             </ul>
 
-            <a
-              href={quoteHref(s)}
+            <LeadButton
+              label={`${s.cta} →`}
+              service={defaultOption(s)}
               className={`btn mt-6 ${s.featured ? "border-red bg-red text-white" : "bg-card"}`}
-            >
-              {s.cta} →
-            </a>
+            />
           </article>
         ))}
       </div>
 
       <p className="mx-auto mt-6 max-w-xl rounded-xl bg-soft-gradient px-4 py-3 text-center text-sm ring-1 ring-red/15">
         Prices depend on your industry and the sites you choose.{" "}
-        <strong className="text-red-dark">Played in the arena? Talk to us</strong> about a participant offer.
+        <strong className="text-red-dark">Played in the arena?</strong> Your participant price (30% off) is waiting in{" "}
+        <Link href="/dashboard" className="font-semibold underline">
+          your dashboard
+        </Link>
+        .
       </p>
     </section>
   );

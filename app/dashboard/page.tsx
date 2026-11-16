@@ -2,11 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { signOut } from "@/app/actions/auth";
+import { LeadButton } from "@/components/LeadButton";
 import { ProductLogo } from "@/components/ProductLogo";
+import { MatchCarousel } from "@/components/MatchCarousel";
+import { RallyKit } from "@/components/RallyKit";
 import { ShareButtons } from "@/components/ShareButtons";
 import { requireUser } from "@/lib/auth";
 import { getCurrentOrLastTournament, getProductsByIds, PRODUCT_PUBLIC_COLUMNS } from "@/lib/data";
-import { PASS_PAYMENT_URL, SITE_URL } from "@/lib/env";
+import { startPassCheckout } from "@/app/actions/pass";
+import { PUBLIC_SITE_URL, SITE_URL } from "@/lib/env";
+import { OFFER_DAYS, PARTICIPANT_DISCOUNT, participantPrice, SERVICES } from "@/lib/services";
+import { STRIPE_CONFIGURED } from "@/lib/stripe";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { matchPath, matchShareUrl } from "@/lib/share";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { roundName } from "@/lib/time";
@@ -18,7 +25,7 @@ export const metadata: Metadata = { title: "Dashboard", robots: { index: false }
 
 export default function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <div className="mx-auto max-w-6xl px-4 py-10">
       <Suspense fallback={<div className="card h-64" />}>
         <Dashboard searchParams={searchParams} />
       </Suspense>
@@ -30,6 +37,7 @@ type Status = { label: string; tone: "sun" | "mint" | "red" | "blue" | "muted" }
 
 function statusFor(t: Tournament | null, entry: Entry | undefined, productId: string): Status {
   if (!t || !entry) return { label: "Not entered", tone: "muted" };
+  if (entry.disqualified_at) return { label: "Disqualified", tone: "red" };
   if (t.status === "draft" || t.status === "qualifying") {
     return entry.entry_path === "free"
       ? { label: "Qualifying", tone: "sun" }
@@ -42,6 +50,170 @@ function statusFor(t: Tournament | null, entry: Entry | undefined, productId: st
   }
   return t.status === "bracket" ? { label: "In the bracket", tone: "mint" } : { label: "Played", tone: "muted" };
 }
+
+/** Guided "finish your guaranteed spot" step for the path picked on the pricing card. */
+function NextStep({
+  plan,
+  products,
+  canEnter,
+}: {
+  plan: "badge" | "pass";
+  products: Product[];
+  canEnter: boolean;
+}) {
+  const when = canEnter ? "this tournament" : "the next tournament";
+  return (
+    <section className="border-gradient mt-6 rounded-[0.875rem] p-5">
+      <p className="text-xs font-bold uppercase tracking-widest text-red-dark">Next step</p>
+      <h2 className="font-display text-2xl font-extrabold">Finish your guaranteed spot</h2>
+      <p className="mt-1 text-sm text-muted">
+        {plan === "pass"
+          ? `Pay once and skip qualifying in ${when}. It never adds votes inside a match.`
+          : `Add a link to Backlink Arena on your site. Once we find it, you skip qualifying in ${when}, free.`}
+      </p>
+      <ul className="mt-4 flex flex-col gap-3">
+        {products.map((p) => {
+          const guaranteed = p.pass_paid || p.badge_status === "verified";
+          return (
+            <li key={p.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-white p-3">
+              <ProductLogo src={p.logo_url} name={p.name} size={40} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-bold">{p.name}</p>
+                <p className="truncate text-xs text-muted">{p.domain}</p>
+              </div>
+              {guaranteed ? (
+                <span className="rounded-full bg-mint-soft px-3 py-1 text-sm font-bold text-mint">
+                  ✓ Already guaranteed ({p.pass_paid ? "paid" : "badge"})
+                </span>
+              ) : plan === "pass" ? (
+                STRIPE_CONFIGURED ? (
+                  <form action={startPassCheckout.bind(null, p.id)}>
+                    <button className="btn bg-red text-sm text-white">Pay $79 →</button>
+                  </form>
+                ) : (
+                  <span className="text-sm font-semibold text-muted">Payments coming soon</span>
+                )
+              ) : (
+                <a href={`#badge-${p.id}`} className="btn bg-blue text-sm text-white">
+                  {p.badge_status === "pending" ? "Badge check pending · view" : "Show me how →"}
+                </a>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-3 text-xs text-muted">
+        {plan === "pass" ? (
+          <>
+            Rather pay nothing? <Link href="/dashboard?plan=badge" className="font-semibold underline">Add our badge instead</Link>.
+          </>
+        ) : (
+          <>
+            Can&apos;t add a link? <Link href="/dashboard?plan=pass" className="font-semibold underline">Pay $79 instead</Link>.
+          </>
+        )}
+      </p>
+    </section>
+  );
+}
+
+type Exposure = { views: number; clicks: number; votes: number };
+
+/** Views, votes and clicks this brand collected across its matchups. */
+function ExposureStats({ stats, reached }: { stats: Exposure; reached: string }) {
+  const cells = [
+    { n: stats.views, l: "Matchup views" },
+    { n: stats.votes, l: "Votes received" },
+    { n: stats.clicks, l: "Clicks to your site" },
+  ];
+  return (
+    <div className="mt-4 rounded-2xl border border-line bg-paper p-4">
+      <p className="text-xs font-bold uppercase tracking-wider text-muted">Your exposure · {reached}</p>
+      <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+        {cells.map((c) => (
+          <div key={c.l}>
+            <p className="font-display text-2xl font-extrabold tabular-nums">{c.n.toLocaleString("en-US")}</p>
+            <p className="text-xs text-muted">{c.l}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const dayFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+
+/** Post-tournament participant offer: services at 30% off for OFFER_DAYS. */
+function ParticipantOffer({
+  product,
+  stats,
+  expires,
+  email,
+}: {
+  product: Product;
+  stats: Exposure;
+  expires: Date;
+  email: string;
+}) {
+  const pct = `${Math.round(PARTICIPANT_DISCOUNT * 100)}% off`;
+  const offer = { productId: product.id, discountLabel: pct };
+  return (
+    <div className="border-gradient mt-4 rounded-[0.875rem] p-5">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <p className="text-xs font-bold uppercase tracking-widest text-red-dark">Participant offer · {pct}</p>
+        <span className="rounded-full bg-sun/40 px-2.5 py-0.5 text-xs font-bold">Valid until {dayFmt.format(expires)}</span>
+      </div>
+      <p className="mt-1 font-display text-xl font-extrabold leading-tight">
+        {stats.views > 0
+          ? `Your matchups got ${stats.views.toLocaleString("en-US")} views and ${stats.clicks.toLocaleString("en-US")} clicks. Turn it into lasting SEO.`
+          : "Turn your arena run into lasting SEO."}
+      </p>
+      <p className="mt-1 text-sm text-muted">
+        You played and shared your matchups, so you get our services at {pct} for {OFFER_DAYS} days.
+      </p>
+      <ul className="mt-4 flex flex-col divide-y divide-line rounded-xl border border-line bg-white">
+        {SERVICES.flatMap((s) =>
+          (s.tiers ?? [{ price: s.price ?? "", title: s.name, detail: s.priceUnit ?? "" }]).map((t) => {
+            const option = s.tiers ? `${s.name} · ${t.title}` : s.name;
+            return (
+              <li key={option} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold">{s.tiers ? `${s.name}: ${t.title}` : s.name}</span>
+                  <span className="block text-xs text-muted">{t.detail}</span>
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="text-right">
+                    <span className="block text-xs text-muted line-through">{t.price}</span>
+                    <span className="block font-display text-xl font-extrabold">{participantPrice(t.price)}</span>
+                  </span>
+                  <LeadButton
+                    label="Claim →"
+                    service={option}
+                    defaultEmail={email}
+                    defaultWebsite={product.url}
+                    offer={offer}
+                    className="btn bg-red px-3! py-1.5! text-sm text-white"
+                  />
+                </span>
+              </li>
+            );
+          }),
+        )}
+      </ul>
+    </div>
+  );
+}
+
+const PASS_NOTICE: Record<string, { text: string; tone: string }> = {
+  success: {
+    text: "Payment received! Your guaranteed spot is being activated (this can take a few seconds, refresh if you don't see it).",
+    tone: "bg-mint-soft",
+  },
+  cancelled: { text: "Payment cancelled. Nothing was charged.", tone: "bg-paper" },
+  already: { text: "This site already has an unused guaranteed spot.", tone: "bg-blue-soft" },
+  unavailable: { text: "Payments aren't switched on yet. Please try again later.", tone: "bg-sun/30" },
+  error: { text: "Couldn't start the payment. Please try again.", tone: "bg-red-soft" },
+};
 
 const TONE: Record<Status["tone"], string> = {
   sun: "bg-sun",
@@ -56,8 +228,12 @@ async function Dashboard({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const joined = (await searchParams).joined;
-  const user = await requireUser("/dashboard");
+  const params = await searchParams;
+  const joined = params.joined;
+  const pass = typeof params.pass === "string" ? params.pass : undefined;
+  // Path picked on the pricing card: "badge" or "pass" (anything else = no guided step).
+  const plan = params.plan === "badge" || params.plan === "pass" ? params.plan : null;
+  const user = await requireUser(plan ? `/dashboard?plan=${plan}` : "/dashboard");
   const supabase = await createSupabaseServer();
   const [{ data: productRows }, tournament] = await Promise.all([
     supabase
@@ -86,7 +262,16 @@ async function Dashboard({
     matches = (m.data ?? []) as Match[];
   }
   // Opponents' slugs for readable matchup links (/vs/a-vs-b).
-  const matchProducts = await getProductsByIds(matches.flatMap((m) => [m.product_a, m.product_b]));
+  const [matchProducts, { data: countRows }] = await Promise.all([
+    getProductsByIds(matches.flatMap((m) => [m.product_a, m.product_b])),
+    matches.some((m) => m.status === "open") && tournament
+      ? supabase.rpc("tournament_match_counts", { p_tournament_id: tournament.id })
+      : Promise.resolve({ data: [] }),
+  ]);
+  // Public vote counts (real + admin adjustment) per match.
+  const countsOf = new Map(
+    ((countRows ?? []) as { match_id: string; a_votes: number; b_votes: number }[]).map((r) => [r.match_id, r]),
+  );
   const pathOf = (m: Match) =>
     matchPath(
       m,
@@ -95,8 +280,27 @@ async function Dashboard({
     );
   const canEnter = tournament?.status === "draft" || tournament?.status === "qualifying";
 
+  // Exposure per site (service role: site_events has no public policies). Empty if migration 0008 isn't run.
+  const exposure = new Map<string, Exposure>();
+  if (ids.length) {
+    const { data } = await createSupabaseAdmin().rpc("product_exposure", { p_ids: ids });
+    for (const r of (data ?? []) as { product_id: string; views: number; clicks: number; votes: number }[]) {
+      exposure.set(r.product_id, { views: Number(r.views), clicks: Number(r.clicks), votes: Number(r.votes) });
+    }
+  }
+  /** When a site's run in this tournament ended (knocked out, didn't qualify, or tournament over). */
+  function runEndedAt(entry: Entry | undefined, productId: string): Date | null {
+    if (!tournament || !entry) return null;
+    const out = entry.eliminated_round !== null && entry.eliminated_round !== undefined;
+    if (!out && tournament.status !== "finished") return null;
+    const last = matches.find((m) => m.product_a === productId || m.product_b === productId);
+    const at = last?.ends_at ?? tournament.qualifying_ends_at ?? null;
+    return at ? new Date(at) : new Date();
+  }
+
   return (
-    <>
+    // Wide layout only when there are several sites to show side by side.
+    <div className={products.length > 1 ? "" : "mx-auto max-w-3xl"}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-4xl font-extrabold">Your corner</h1>
@@ -107,96 +311,193 @@ async function Dashboard({
         </form>
       </div>
 
+      {pass && PASS_NOTICE[pass] && (
+        <p className={`mt-4 rounded-2xl border border-line p-3 font-semibold ${PASS_NOTICE[pass].tone}`}>
+          {PASS_NOTICE[pass].text}
+        </p>
+      )}
+
       {joined && (
         <p className="mt-4 rounded-2xl border border-line bg-mint-soft p-3 font-semibold">
-          You&apos;re in! Share your page to collect votes.
+          {plan
+            ? "Your website is in! One step left: finish your guaranteed spot below."
+            : "You're in! Share your page to collect votes."}
         </p>
+      )}
+
+      {plan && products.length > 0 && (
+        <NextStep
+          plan={plan}
+          products={
+            products.filter((p) => p.slug === joined).length
+              ? products.filter((p) => p.slug === joined)
+              : products
+          }
+          canEnter={canEnter}
+        />
       )}
 
       {products.length === 0 ? (
         <div className="card mt-6 p-6 text-center">
           <p className="text-lg font-bold">No website entered yet.</p>
-          <Link href="/join" className="btn mt-4 bg-red text-white">
+          {plan && (
+            <p className="mt-1 text-sm text-muted">
+              First add your website, then we&apos;ll get your guaranteed spot
+              {plan === "pass" ? " ($79)" : " (with our badge)"}.
+            </p>
+          )}
+          <Link href={plan ? `/join?plan=${plan}` : "/join"} className="btn mt-4 bg-red text-white">
             Join with your website
           </Link>
         </div>
       ) : (
         <div className="mt-6 flex flex-col gap-6">
-          {products.map((p) => {
-            const entry = entries.find((e) => e.product_id === p.id);
-            const status = statusFor(tournament, entry, p.id);
-            const current = matches.find(
-              (m) => m.product_a === p.id || m.product_b === p.id,
-            );
-            const shareLink = current
-              ? matchShareUrl(pathOf(current), p.slug)
-              : `${SITE_URL}/arena?ref=${p.slug}`;
-            return (
-              <section key={p.id} className="card p-5">
-                <div className="flex items-center gap-4">
-                  <ProductLogo src={p.logo_url} name={p.name} size={56} />
-                  <div className="min-w-0 flex-1">
-                    <Link href={`/p/${p.slug}`} className="font-display text-xl font-extrabold hover:underline">
-                      {p.name}
-                    </Link>
-                    <p className="truncate text-sm text-muted">{p.domain}</p>
+          <MatchCarousel
+            itemLabel="Website"
+            slideClassName={products.length > 1 ? "w-[92%] md:w-[calc(50%-0.5rem)]" : "w-full"}
+          >
+            {products.map((p) => {
+              const entry = entries.find((e) => e.product_id === p.id);
+              const status = statusFor(tournament, entry, p.id);
+              const current = matches.find(
+                (m) => m.product_a === p.id || m.product_b === p.id,
+              );
+              const shareLink = current
+                ? matchShareUrl(pathOf(current), p.slug)
+                : `${SITE_URL}/arena?ref=${p.slug}`;
+              return (
+                <section key={p.id} className="card flex h-full flex-col p-5">
+                  <div className="flex items-center gap-4">
+                    <ProductLogo src={p.logo_url} name={p.name} size={56} />
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/p/${p.slug}`} className="font-display text-xl font-extrabold hover:underline">
+                        {p.name}
+                      </Link>
+                      <p className="truncate text-sm text-muted">{p.domain}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full border border-line px-3 py-1 text-sm font-bold ${TONE[status.tone]}`}>
+                      {status.label}
+                    </span>
                   </div>
-                  <span className={`shrink-0 rounded-full border border-line px-3 py-1 text-sm font-bold ${TONE[status.tone]}`}>
-                    {status.label}
-                  </span>
-                </div>
 
-                {tournament && (
-                  <p className="mt-3 text-sm text-muted">
-                    Tournament: <span className="font-semibold text-ink">{tournament.name}</span>
-                  </p>
-                )}
-
-                {!entry && canEnter && (
-                  <div className="mt-4">
-                    <EnterButton productId={p.id} />
-                  </div>
-                )}
-
-                {current && (
-                  <Link href={`${pathOf(current)}?ref=${p.slug}`} className="btn mt-4 w-full bg-red text-white">
-                    {current.status === "open" ? "Go to your matchup →" : "See your last matchup →"}
-                  </Link>
-                )}
-
-                <div className="mt-5">
-                  <ShareButtons
-                    link={shareLink}
-                    title={current ? "Rally votes for your matchup" : "Share your entry"}
-                  />
-                </div>
-
-                <BadgeCard siteUrl={SITE_URL} slug={p.slug} productId={p.id} domain={p.domain} badgeStatus={p.badge_status} />
-
-                {canEnter && entry?.entry_path === "free" && (
-                  <div className="mt-4 rounded-2xl border border-line bg-sun/30 p-4">
-                    <p className="font-display text-lg font-extrabold">No badge? Get the Contender Pass</p>
-                    <p className="mt-1 text-sm">
-                      $79 one-time. Skips qualifying, no badge needed. It never adds votes inside a match.
+                  {tournament && (
+                    <p className="mt-3 text-sm text-muted">
+                      Tournament: <span className="font-semibold text-ink">{tournament.name}</span>
                     </p>
-                    <p className="mt-2 text-xs text-muted">Pay with {user.email} so we can match it.</p>
-                    {PASS_PAYMENT_URL ? (
-                      <a href={PASS_PAYMENT_URL} target="_blank" rel="noopener noreferrer" className="btn mt-3 bg-ink text-white">
-                        Get the Contender Pass
-                      </a>
-                    ) : (
-                      <p className="mt-3 text-sm font-semibold">Coming soon.</p>
-                    )}
+                  )}
+
+                  {!entry && tournament && !canEnter && tournament.status !== "finished" && (
+                    <p className="mt-4 rounded-2xl border border-line bg-sun/30 p-3 text-sm">
+                      <span className="font-bold">Added after this bracket started.</span> {p.name} isn&apos;t in{" "}
+                      {tournament.name}, so there&apos;s no matchup to rally for yet. It can enter when the next
+                      tournament opens.
+                    </p>
+                  )}
+
+                  {!entry && canEnter && (
+                    <div className="mt-4">
+                      <EnterButton productId={p.id} />
+                    </div>
+                  )}
+
+                  {entry && exposure.has(p.id) && (
+                    <ExposureStats stats={exposure.get(p.id)!} reached={status.label} />
+                  )}
+
+                  {(() => {
+                    const ended = runEndedAt(entry, p.id);
+                    if (!ended) return null;
+                    const expires = new Date(ended.getTime() + OFFER_DAYS * 86400_000);
+                    if (expires.getTime() < Date.now()) return null;
+                    return (
+                      <ParticipantOffer
+                        product={p}
+                        stats={exposure.get(p.id) ?? { views: 0, clicks: 0, votes: 0 }}
+                        expires={expires}
+                        email={user.email ?? ""}
+                      />
+                    );
+                  })()}
+
+                  {current?.status === "open" && tournament ? (
+                    (() => {
+                      const mine = current.product_a === p.id ? "a" : "b";
+                      const rivalId = mine === "a" ? current.product_b : current.product_a;
+                      const c = countsOf.get(current.id);
+                      return (
+                        <RallyKit
+                          mySide={mine}
+                          me={p.name}
+                          rival={(rivalId && matchProducts.get(rivalId)?.name) || "a bye"}
+                          myLogo={p.logo_url}
+                          rivalLogo={(rivalId && matchProducts.get(rivalId)?.logo_url) || null}
+                          round={roundName(current.round, tournament.bracket_size)}
+                          link={shareLink}
+                          endsAt={current.ends_at}
+                          myVotes={c ? (mine === "a" ? c.a_votes : c.b_votes) : 0}
+                          rivalVotes={c ? (mine === "a" ? c.b_votes : c.a_votes) : 0}
+                          imageUrl={`${pathOf(current)}/opengraph-image`}
+                        />
+                      );
+                    })()
+                  ) : (
+                    <div className="mt-5">
+                      <ShareButtons link={shareLink} title={current ? "Share your last matchup" : "Share your entry"} />
+                    </div>
+                  )}
+
+                  <div
+                    id={`badge-${p.id}`}
+                    className={`scroll-mt-6 rounded-2xl ${plan === "badge" ? "ring-2 ring-blue ring-offset-4" : ""}`}
+                  >
+                    <BadgeCard siteUrl={PUBLIC_SITE_URL} slug={p.slug} productId={p.id} domain={p.domain} badgeStatus={p.badge_status} />
                   </div>
-                )}
-              </section>
-            );
-          })}
+
+                  {p.pass_paid && (
+                    <p className="mt-4 rounded-2xl border border-line bg-blue-soft p-3 text-sm font-semibold">
+                      ✓ Guaranteed spot paid.{" "}
+                      {canEnter
+                        ? "You skip qualifying in this tournament."
+                        : "You'll be entered automatically when the next tournament opens."}
+                    </p>
+                  )}
+
+                  {!p.pass_paid &&
+                    p.badge_status !== "verified" &&
+                    (!entry || entry.entry_path === "free") &&
+                    current?.status !== "open" && (
+                      <div className="mt-4 rounded-2xl border border-line bg-sun/30 p-4">
+                        <p className="font-display text-lg font-extrabold">No badge? Get a guaranteed spot for $79</p>
+                        <p className="mt-1 text-sm">
+                          Skip qualifying {canEnter ? "in this tournament" : "in the next tournament"}, no badge needed.
+                          One tournament, one-time payment. It never adds votes inside a match.
+                        </p>
+                        {STRIPE_CONFIGURED ? (
+                          <form action={startPassCheckout.bind(null, p.id)}>
+                            <button className="btn mt-3 bg-ink text-white">Get a guaranteed spot · $79</button>
+                          </form>
+                        ) : (
+                          <p className="mt-3 text-sm font-semibold">Coming soon.</p>
+                        )}
+                      </div>
+                    )}
+
+                  {current && (
+                    <div className="mt-auto pt-5">
+                      <Link href={`${pathOf(current)}?ref=${p.slug}`} className="btn w-full bg-red text-white">
+                        {current.status === "open" ? "Go to your matchup →" : "See your last matchup →"}
+                      </Link>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </MatchCarousel>
           <Link href="/join" className="text-center text-sm font-semibold underline">
             + Add another website
           </Link>
         </div>
       )}
-    </>
+    </div>
   );
 }

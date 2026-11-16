@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { arenaHosts, findBacklink } from "@/lib/badge";
 import { skipQualifying } from "@/lib/entries";
-import { SITE_URL } from "@/lib/env";
+import { PUBLIC_SITE_URL, SITE_URL } from "@/lib/env";
 import { fetchHtml } from "@/lib/metadata";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import type { ActionResult } from "@/lib/types";
@@ -55,7 +55,7 @@ export async function checkBadge(productId: string, pageInput?: string): Promise
   let result = { found: false, dofollow: false };
   try {
     const { html, finalUrl } = await fetchHtml(page, 3_000_000);
-    if (html) result = findBacklink(html, finalUrl, arenaHosts(SITE_URL));
+    if (html) result = findBacklink(html, finalUrl, [...new Set([...arenaHosts(SITE_URL), ...arenaHosts(PUBLIC_SITE_URL)])]);
   } catch {
     // Unreachable page: fall through to manual check.
   }
