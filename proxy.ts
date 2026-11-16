@@ -3,6 +3,16 @@ import { createServerClient } from "@supabase/ssr";
 
 /** Refreshes the Supabase session cookie on every page request. */
 export async function proxy(request: NextRequest) {
+  // Supabase falls back to the Site URL (the homepage) when the requested redirect isn't in its
+  // allow-list. Finish that login in the callback instead of silently dropping the code.
+  const { pathname, searchParams } = request.nextUrl;
+  if (pathname === "/" && (searchParams.has("code") || searchParams.has("token_hash"))) {
+    const to = request.nextUrl.clone();
+    to.pathname = "/auth/callback";
+    if (!to.searchParams.has("next")) to.searchParams.set("next", "/dashboard");
+    return NextResponse.redirect(to);
+  }
+
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

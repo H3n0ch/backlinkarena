@@ -18,6 +18,8 @@ function errorMessage(reason: string): string {
       return "That link expired or was already used. Ask for a new one below.";
     case "browser":
       return "Open the link in the same browser where you asked for it (not inside your mail app), or ask for a new link here.";
+    case "provider":
+      return "Google sign-in isn't working right now. Please use the magic link below, or try again later.";
     case "email_address_invalid":
     case "email_address_not_authorized":
       return "We can't send a link to that address. Please check it or use another email.";
