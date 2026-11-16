@@ -1,7 +1,11 @@
 "use server";
 
+import { after } from "next/server";
 import { z } from "zod";
 import { getUser } from "@/lib/auth";
+import { sendEmail } from "@/lib/email";
+import { welcomeEmail } from "@/lib/email-templates";
+import { PUBLIC_SITE_URL } from "@/lib/env";
 import { getActiveTournament } from "@/lib/data";
 import { skipQualifying } from "@/lib/entries";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
@@ -100,7 +104,17 @@ export async function createProduct(
   if (!productId) return { ok: false, error: "Could not save your product. Please try again." };
 
   const entered = await enterActiveTournament(productId);
+  if (user.email) {
+    const to = user.email;
+    const name = parsed.data.name;
+    after(() => sendWelcome(to, name, slug, entered));
+  }
   return { ok: true, data: { slug, entered } };
+}
+
+/** First email after a website joins: what happens next + their page to share. */
+async function sendWelcome(to: string, name: string, slug: string, entered: boolean) {
+  await sendEmail(to, welcomeEmail({ name, slug, entered, siteUrl: PUBLIC_SITE_URL }));
 }
 
 /** Free entry into the open (draft or qualifying) tournament, if there is one. */

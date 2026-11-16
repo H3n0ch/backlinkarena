@@ -1,7 +1,11 @@
 "use server";
 
+import { after } from "next/server";
 import { z } from "zod";
 import { getUser } from "@/lib/auth";
+import { sendEmail } from "@/lib/email";
+import { leadAdminEmail, leadConfirmEmail } from "@/lib/email-templates";
+import { CONTACT_EMAIL, PUBLIC_SITE_URL } from "@/lib/env";
 import { clientIpHash } from "@/lib/guest";
 import { PARTICIPANT_DISCOUNT, SERVICE_OPTIONS } from "@/lib/services";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
@@ -74,7 +78,27 @@ export async function submitLead(input: z.input<typeof LeadInput>): Promise<Acti
     ip_hash: ipHash,
   });
   if (error) return { ok: false, error: "Couldn't send your request. Please try again." };
+
+  // Emails go out after the response, so a slow or missing mail service never blocks the form.
+  after(() => notifyLead({ ...d, service, tier: tier ?? null, website, discount }));
   return { ok: true };
+}
+
+async function notifyLead(l: {
+  name: string;
+  email: string;
+  service: string;
+  tier: string | null;
+  website: string;
+  message: string;
+  discount: number;
+}) {
+  const info = { ...l, what: l.tier ? `${l.service} · ${l.tier}` : l.service };
+  const admin = process.env.ADMIN_EMAIL || CONTACT_EMAIL;
+  await Promise.all([
+    admin && sendEmail(admin, leadAdminEmail(info, PUBLIC_SITE_URL), { replyTo: l.email }),
+    sendEmail(l.email, leadConfirmEmail(info), { replyTo: admin || undefined }),
+  ]);
 }
 
 export async function setLeadStatus(id: string, status: "new" | "contacted" | "won" | "lost"): Promise<ActionResult> {
