@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { signOut } from "@/app/actions/auth";
+import { LogoutButton } from "@/components/LogoutButton";
 import { LeadButton } from "@/components/LeadButton";
 import { ProductLogo } from "@/components/ProductLogo";
 import { MatchCarousel } from "@/components/MatchCarousel";
@@ -306,9 +306,7 @@ async function Dashboard({
           <h1 className="font-display text-4xl font-extrabold">Your corner</h1>
           <p className="text-muted">{user.email}</p>
         </div>
-        <form action={signOut}>
-          <button className="text-sm font-semibold underline">Log out</button>
-        </form>
+        <LogoutButton />
       </div>
 
       {pass && PASS_NOTICE[pass] && (

@@ -13,7 +13,15 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(to);
   }
 
-  let response = NextResponse.next({ request });
+  // Forward the requested path so app/not-found.tsx can react to the URL that failed.
+  // Rebuilt on every call so refreshed session cookies are forwarded too.
+  const forward = () => {
+    const headers = new Headers(request.headers);
+    headers.set("x-pathname", pathname);
+    return NextResponse.next({ request: { headers } });
+  };
+
+  let response = forward();
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key =
@@ -27,7 +35,7 @@ export async function proxy(request: NextRequest) {
       },
       setAll(cookiesToSet, headers) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
+        response = forward();
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options),
         );

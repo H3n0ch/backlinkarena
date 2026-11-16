@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CookieSettingsLink } from "@/components/Analytics";
 
 import { SUPABASE_CONFIGURED } from "@/lib/env";
 
@@ -18,6 +19,7 @@ export function Footer() {
           <Link href="/winners">Winners</Link>
           <Link href="/rules">Rules</Link>
           <Link href="/privacy">Privacy</Link>
+          <CookieSettingsLink />
         </nav>
       </div>
     </footer>

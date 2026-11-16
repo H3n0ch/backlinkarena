@@ -5,6 +5,7 @@ import { GOLD_TEXT, PREMIUM_FRAME } from "@/components/premium";
 import { ProductLogo } from "@/components/ProductLogo";
 import { Services } from "@/components/Services";
 import { TournamentSection } from "@/components/TournamentSection";
+import { WallOfLove } from "@/components/WallOfLove";
 import { getArenaStats, getCurrentOrLastTournament, getRecentProducts, getWinners } from "@/lib/data";
 
 export default function Home() {
@@ -22,6 +23,7 @@ export default function Home() {
         <PastWinners />
       </Suspense>
 
+      <WallOfLove />
       <EveryoneWins />
       <Pricing />
       <Services />

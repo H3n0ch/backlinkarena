@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Inter } from "next/font/google";
 import { Suspense } from "react";
+import { Analytics } from "@/components/Analytics";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -29,6 +30,10 @@ export const metadata: Metadata = {
     "Strong backlinks shouldn't only be for companies with big budgets. Enter your website, win 1v1 votes, and win a backlink on a real DA 50+ site in your niche.",
   openGraph: { siteName: "Backlink Arena", type: "website" },
   twitter: { card: "summary_large_image" },
+  // Google Search Console "HTML tag" verification (only needed if you don't verify via DNS).
+  ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } }
+    : {}),
 };
 
 export const viewport: Viewport = {
@@ -45,6 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Header />
         <main className="flex-1 w-full">{children}</main>
         <Footer />
+        <Analytics />
       </body>
     </html>
   );
