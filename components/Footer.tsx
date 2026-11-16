@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { CookieSettingsLink } from "@/components/Analytics";
-
-import { SUPABASE_CONFIGURED } from "@/lib/env";
+import { CONTACT_EMAIL, SUPABASE_CONFIGURED } from "@/lib/env";
 
 export function Footer() {
   return (
@@ -15,10 +14,11 @@ export function Footer() {
       )}
       <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
         <p>Backlink Arena · Strong backlinks for everyone.</p>
-        <nav className="flex gap-4 font-semibold text-ink">
+        <nav className="flex flex-wrap gap-x-4 gap-y-2 font-semibold text-ink">
           <Link href="/winners">Winners</Link>
           <Link href="/rules">Rules</Link>
           <Link href="/privacy">Privacy</Link>
+          {CONTACT_EMAIL && <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>}
           <CookieSettingsLink />
         </nav>
       </div>
