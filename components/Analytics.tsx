@@ -5,14 +5,18 @@ import Script from "next/script";
 import { useEffect, useState } from "react";
 
 /*
-  Google Analytics 4, loaded ONLY after the visitor accepts (GDPR / TTDSG §25).
-  - NEXT_PUBLIC_GA_ID (e.g. G-XXXXXXX): without it nothing renders, no banner, no script.
-  - The choice is stored in localStorage; "Cookie settings" in the footer reopens the banner.
+  Google Analytics 4.
+  - NEXT_PUBLIC_GA_ID (e.g. G-XXXXXXX): without it nothing renders.
+  - Default: GA loads for every visitor, no banner.
+  - NEXT_PUBLIC_ANALYTICS_CONSENT=required: GA loads ONLY after the visitor accepts a cookie
+    banner (needed e.g. for EU visitors under GDPR). The choice is stored in localStorage and
+    "Cookie settings" in the footer reopens the banner.
   - Page views on client-side navigation are tracked by GA4's enhanced measurement
     ("page changes based on browser history events", on by default).
 */
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID ?? "";
+const CONSENT_REQUIRED = process.env.NEXT_PUBLIC_ANALYTICS_CONSENT === "required";
 const KEY = "ba-analytics-consent";
 export const OPEN_COOKIE_SETTINGS = "ba:cookie-settings";
 
@@ -27,7 +31,24 @@ function readConsent(): Consent {
   }
 }
 
+function GaScripts() {
+  return (
+    <>
+      <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
+      <Script id="ga-init" strategy="afterInteractive">
+        {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}');`}
+      </Script>
+    </>
+  );
+}
+
 export function Analytics() {
+  if (!GA_ID) return null;
+  return CONSENT_REQUIRED ? <ConsentAnalytics /> : <GaScripts />;
+}
+
+/** GA behind a cookie banner. */
+function ConsentAnalytics() {
   // undefined = not read yet (server render / first paint): show nothing to avoid a flash.
   const [consent, setConsent] = useState<Consent | undefined>(undefined);
   const [open, setOpen] = useState(false);
@@ -58,18 +79,9 @@ export function Analytics() {
     setOpen(false);
   }
 
-  if (!GA_ID) return null;
-
   return (
     <>
-      {consent === "granted" && (
-        <>
-          <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
-          <Script id="ga-init" strategy="afterInteractive">
-            {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}');`}
-          </Script>
-        </>
-      )}
+      {consent === "granted" && <GaScripts />}
 
       {open && consent !== undefined && (
         <div
@@ -109,7 +121,7 @@ export function Analytics() {
 
 /** Footer link that reopens the banner (consent must be as easy to withdraw as to give). */
 export function CookieSettingsLink() {
-  if (!GA_ID) return null;
+  if (!GA_ID || !CONSENT_REQUIRED) return null;
   return (
     <button type="button" onClick={() => window.dispatchEvent(new Event(OPEN_COOKIE_SETTINGS))} className="hover:underline">
       Cookie settings
