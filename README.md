@@ -62,7 +62,7 @@ lib/                  Data access, auth, env, URLs, Stripe, email
 netlify/functions/    advance.mts: scheduled engine run every 5 minutes
 scripts/              build-email-templates.mts (generates the Supabase templates)
 supabase/
-  migrations/         0001–0009, run in order
+  migrations/         0001–0010, run in order
   templates/          Generated Supabase auth email templates
   tests/              integrity.sql
 ```
@@ -81,7 +81,7 @@ supabase/
 ### 1. Supabase
 
 1. Create a project at supabase.com.
-2. In the SQL Editor, run every file in [`supabase/migrations/`](supabase/migrations/) **in order** (0001 → 0009). They are safe to re-run.
+2. In the SQL Editor, run every file in [`supabase/migrations/`](supabase/migrations/) **in order** (0001 → 0010). They are safe to re-run.
 3. Optional: run [`supabase/tests/integrity.sql`](supabase/tests/integrity.sql). It rolls back, and the last row should read `ALL CHECKS PASSED`.
 4. **Authentication → Sign In / Providers**
    - **Email**: on.

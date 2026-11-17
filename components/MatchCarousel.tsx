@@ -57,7 +57,7 @@ export function MatchCarousel({
         className="-mx-3 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-3 pb-2 [scrollbar-width:none] sm:-mx-4 sm:px-4 [&::-webkit-scrollbar]:hidden"
       >
         {slides.map((s, i) => (
-          <div key={i} className={`shrink-0 snap-start ${slideClassName}`}>
+          <div key={i} className={`flex shrink-0 snap-start flex-col *:flex-1 ${slideClassName}`}>
             {s}
           </div>
         ))}

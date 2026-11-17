@@ -20,12 +20,13 @@ function Check() {
 export function Services() {
   return (
     <section id="services" className="mx-auto mt-24 max-w-5xl scroll-mt-20 px-4">
-      <p className="text-gradient mx-auto w-fit text-center text-xs font-bold uppercase tracking-widest">Services</p>
+      <p className="text-gradient mx-auto w-fit text-center text-xs font-bold uppercase tracking-widest">Our service</p>
       <h2 className="headline mt-2 text-center text-4xl sm:text-5xl">
-        Grow beyond the <span className="text-gradient">arena</span>
+        Backlinks that <span className="text-gradient">actually count</span>
       </h2>
       <p className="mx-auto mt-3 max-w-xl text-center text-muted">
-        Want more than one backlink? We do the outreach and get you placed on relevant websites and in the media.
+        The arena is how you meet us. Placing your links is what we do: real content on relevant sites in your niche, no
+        PBNs and no link farms.
       </p>
 
       <div className="mt-10 grid gap-4 md:grid-cols-2">

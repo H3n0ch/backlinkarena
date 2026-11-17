@@ -36,7 +36,7 @@ export const SERVICES: Service[] = [
   {
     id: "outreach",
     name: "Backlink Placement",
-    tagline: "We do the outreach and place your link on relevant websites in your industry.",
+    tagline: "We do the outreach and get your link into content on relevant, established sites in your industry.",
     tiers: [
       { price: "$870", title: "3 placements", detail: "Relevant sites in your industry" },
       { price: "$1,670", title: "5 placements", detail: "Incl. 1 DA 50+ site", tag: "Most popular" },
@@ -45,7 +45,8 @@ export const SERVICES: Service[] = [
     features: [
       "Hand-picked sites that match your industry and audience",
       "Personal outreach to real site owners and editors",
-      "Do-follow links placed in relevant content",
+      "Do-follow links inside real, relevant content",
+      "No PBNs, no link farms, no spam directories",
       "Report with every live link",
     ],
     cta: "Talk to us",

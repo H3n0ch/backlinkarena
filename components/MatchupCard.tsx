@@ -99,7 +99,7 @@ export function MatchupCard({
 
   return (
     <article
-      className="group relative overflow-hidden rounded-[1.25rem] transition duration-300 hover:-translate-y-0.5"
+      className="group relative flex h-full flex-col overflow-hidden rounded-[1.25rem] transition duration-300 hover:-translate-y-0.5"
       style={PREMIUM_FRAME}
     >
       {/* Gold hairline along the top */}
@@ -149,8 +149,9 @@ export function MatchupCard({
         <Side p={b} side="b" leading={!closed && b_votes > a_votes} won={winB} lost={closed && !winB} />
       </div>
 
-      {/* Score: counts either side of a slim tug-of-war bar */}
-      <div className="mt-5 px-5">
+      {/* Score: counts either side of a slim tug-of-war bar. mt-auto keeps score + buttons
+          at the bottom, so cards in a row line up even when one brand has no category. */}
+      <div className="mt-auto px-5 pt-5">
         <div className="flex items-end justify-between">
           <p className={`font-display text-3xl font-black leading-none tabular-nums ${SIDE.a.votes}`}>
             {a_votes}

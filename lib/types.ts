@@ -28,6 +28,8 @@ export type Tournament = {
   /** Set while an admin has paused the tournament (migration 0009). */
   paused_at?: string | null;
   match_hours: number;
+  /** Length of each bracket match in minutes (migration 0010). Older rows: use match_hours. */
+  match_minutes?: number | null;
   winner_product_id: string | null;
   prize_url: string | null;
   prize_delivered_at: string | null;

@@ -308,7 +308,9 @@ export async function saveTournament(id: string, input: z.input<typeof Tournamen
   if (!uuid.safeParse(id).success || !p.success) return fail("Please check the fields.");
   const d = p.data;
   if (d.prizeUrl && !safeHttpUrl(d.prizeUrl)) return fail("Prize URL must be an http(s) URL.");
-  const { data: current } = await db.from("tournaments").select("prize_delivered_at").eq("id", id).single();
+  const { data: current } = await db.from("tournaments").select("prize_delivered_at, match_hours").eq("id", id).single();
+  // Match length lives in match_minutes (0010); only overwrite it when the hours were actually changed here.
+  const minutes = current && current.match_hours !== d.matchHours ? { match_minutes: d.matchHours * 60 } : {};
   const { error } = await db
     .from("tournaments")
     .update({
@@ -317,6 +319,7 @@ export async function saveTournament(id: string, input: z.input<typeof Tournamen
       bracket_size: d.bracketSize,
       qualifying_ends_at: d.qualifyingEndsAt,
       match_hours: d.matchHours,
+      ...minutes,
       winner_product_id: d.winnerProductId,
       prize_url: safeHttpUrl(d.prizeUrl),
       prize_delivered_at: d.prizeDelivered ? (current?.prize_delivered_at ?? new Date().toISOString()) : null,

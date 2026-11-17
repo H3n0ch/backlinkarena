@@ -24,9 +24,9 @@ import { deleteProductAdmin, setMatchWinner } from "@/app/actions/crm";
 import { ProductLogo } from "@/components/ProductLogo";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { roundName } from "@/lib/time";
+import { matchMinutes, roundName } from "@/lib/time";
 import type { Entry, Match, Product, Tournament } from "@/lib/types";
-import { ActionButton, CreateTournamentForm, PrizeForm, TimesForm, VoteRemovalForms } from "./AdminForms";
+import { ActionButton, CreateTournamentForm, PrizeForm, TimerPanel, VoteRemovalForms } from "./AdminForms";
 import { AdminNav } from "./AdminNav";
 import { nicheKey } from "@/lib/niche";
 import { DqButton, PathChip, Seat, type SeatBrand } from "./ControlRoom";
@@ -241,9 +241,21 @@ async function Admin() {
                 Public view ↗
               </Link>
             </div>
-            {active.status !== "bracket" && (
-              <TimesForm id={active.id} qualifyingEndsAt={active.qualifying_ends_at} matchHours={active.match_hours} />
-            )}
+            <TimerPanel
+              key={`${active.id}:${active.status}:${active.qualifying_ends_at}:${matchMinutes(active)}`}
+              id={active.id}
+              status={active.status}
+              qualifyingEndsAt={active.qualifying_ends_at}
+              matchMinutes={matchMinutes(active)}
+              nextMatchEnd={
+                current
+                  .filter((m) => m.status === "open")
+                  .map((m) => m.ends_at)
+                  .sort()[0] ?? null
+              }
+              openMatches={current.filter((m) => m.status === "open").length}
+              paused={Boolean(active.paused_at)}
+            />
           </div>
         ) : (
           <>

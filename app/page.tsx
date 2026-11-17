@@ -394,8 +394,12 @@ const FAQ = [
     a: "A backlink on a real DA 50+ website in your niche. We choose the site with you and place the link by hand. Every placed link is listed on the Winners page.",
   },
   {
+    q: "Can I get backlinks without winning?",
+    a: "Yes. Placing backlinks is our main service. We do the outreach and get your link into content on relevant sites in your niche, with no PBNs and no link farms. See Services below. Played in a tournament? You get 30% off for 7 days.",
+  },
+  {
     q: "Can I buy votes?",
-    a: "No. Nothing paid or earned adds votes inside a match. Everyone gets one vote per matchup, no sign-up needed, and you can't vote in your own.",
+    a: "No. Paying $79 or adding our badge only gets you into the bracket. It never adds votes to a matchup. Every visitor gets one vote per matchup, no sign-up needed, and you can't vote in a matchup you're part of.",
   },
   {
     q: "How does the qualifying round work?",
@@ -411,7 +415,7 @@ const FAQ = [
   },
   {
     q: "What if I lose?",
-    a: "You keep the visitors and attention your matchups brought in, and you see your numbers in your dashboard. You also get 30% off our backlink services for 7 days, and you can enter the next tournament.",
+    a: "You keep the visitors and attention your matchups brought in, and you see your numbers in your dashboard. You also get 30% off our backlink placement service for 7 days, and you can enter the next tournament.",
   },
 ];
 

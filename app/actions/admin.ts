@@ -19,10 +19,15 @@ function done(message?: string): ActionResult {
   return { ok: true, message };
 }
 
+const MAX_MATCH_MINUTES = 43200; // 30 days
+
+/** Keeps the old match_hours column roughly in sync (rounded up, 1–720). */
+const hoursFor = (min: number) => Math.min(720, Math.max(1, Math.ceil(min / 60)));
+
 const NewTournament = z.object({
   name: z.string().trim().min(1).max(100),
   qualifyingEndsAt: z.string().min(1),
-  matchHours: z.coerce.number().int().min(1).max(720),
+  matchMinutes: z.coerce.number().int().min(1).max(MAX_MATCH_MINUTES),
   bracketSize: z.coerce.number().refine((n) => n === 8 || n === 16),
 });
 
@@ -35,7 +40,8 @@ export async function createTournament(input: z.input<typeof NewTournament>): Pr
   const { error } = await db.from("tournaments").insert({
     name: p.data.name,
     qualifying_ends_at: endsAt.toISOString(),
-    match_hours: p.data.matchHours,
+    match_minutes: p.data.matchMinutes,
+    match_hours: hoursFor(p.data.matchMinutes),
     bracket_size: p.data.bracketSize,
   });
   if (error) {
@@ -47,21 +53,91 @@ export async function createTournament(input: z.input<typeof NewTournament>): Pr
   return done("Tournament created as draft.");
 }
 
+// ---------------------------------------------------------------------------
+// Timers. Each change runs the engine right away, so a timer moved into the past
+// closes / seeds immediately, and open public pages pick it up within seconds.
+// ---------------------------------------------------------------------------
+
+type Db = ReturnType<typeof createSupabaseAdmin>;
+
+async function loadTimed(db: Db, id: string) {
+  if (!z.guid().safeParse(id).success) return null;
+  const { data: t } = await db.from("tournaments").select("*").eq("id", id).single();
+  return t ?? null;
+}
+
+async function engineThenDone(db: Db, message: string): Promise<ActionResult> {
+  await db.rpc("advance_tournaments");
+  return done(message);
+}
+
+/** Sets qualifying end and match length. Before the bracket only (open matches use shiftTimers). */
 export async function updateTournamentTimes(
   id: string,
   qualifyingEndsAt: string,
-  matchHours: number,
+  matchMinutes: number,
 ): Promise<ActionResult> {
   const db = await admin();
   const endsAt = new Date(qualifyingEndsAt);
   if (Number.isNaN(endsAt.getTime())) return { ok: false, error: "Invalid date." };
-  const hours = Math.round(Number(matchHours));
-  if (!(hours >= 1 && hours <= 720)) return { ok: false, error: "Match hours must be 1–720." };
+  const min = Math.round(Number(matchMinutes));
+  if (!(min >= 1 && min <= MAX_MATCH_MINUTES)) return { ok: false, error: "Match length must be 1 minute to 30 days." };
   const { error } = await db
     .from("tournaments")
-    .update({ qualifying_ends_at: endsAt.toISOString(), match_hours: hours })
+    .update({ qualifying_ends_at: endsAt.toISOString(), match_minutes: min, match_hours: hoursFor(min) })
     .eq("id", id);
-  return error ? { ok: false, error: error.message } : done("Saved.");
+  return error ? { ok: false, error: error.message } : engineThenDone(db, "Saved.");
+}
+
+/**
+ * Moves the running timer by `minutes` (negative = sooner): the qualifying end before the
+ * bracket, or every open match in the bracket. `minutes: null` ends it now.
+ */
+export async function shiftTimers(id: string, minutes: number | null): Promise<ActionResult> {
+  const db = await admin();
+  const t = await loadTimed(db, id);
+  if (!t) return { ok: false, error: "Tournament not found." };
+  const now = Date.now();
+  const move = (iso: string | null) =>
+    new Date(minutes === null ? now : Math.max(now, Date.parse(iso ?? new Date(now).toISOString()) + minutes * 60_000)).toISOString();
+
+  if (t.status === "draft" || t.status === "qualifying") {
+    const { error } = await db.from("tournaments").update({ qualifying_ends_at: move(t.qualifying_ends_at) }).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    if (t.status === "draft") return done(minutes === null ? "Qualifying end set to now (opens when you start qualifying)." : "Qualifying end moved.");
+    return engineThenDone(db, minutes === null ? "Qualifying ended." : "Qualifying end moved.");
+  }
+  if (t.status === "bracket") {
+    const { data: open } = await db.from("matches").select("id, ends_at").eq("tournament_id", id).eq("status", "open");
+    if (!open?.length) return { ok: false, error: "No open matches." };
+    for (const m of open) {
+      const { error } = await db.from("matches").update({ ends_at: move(m.ends_at as string) }).eq("id", m.id);
+      if (error) return { ok: false, error: error.message };
+    }
+    const n = open.length;
+    return engineThenDone(db, minutes === null ? `Ended ${n} open match${n === 1 ? "" : "es"}.` : `Moved ${n} open match${n === 1 ? "" : "es"}.`);
+  }
+  return { ok: false, error: "Tournament is finished." };
+}
+
+/** Sets the match length for upcoming matches; `restartOpen` also restarts open matches with it. */
+export async function setMatchLength(id: string, matchMinutes: number, restartOpen: boolean): Promise<ActionResult> {
+  const db = await admin();
+  const t = await loadTimed(db, id);
+  if (!t) return { ok: false, error: "Tournament not found." };
+  const min = Math.round(Number(matchMinutes));
+  if (!(min >= 1 && min <= MAX_MATCH_MINUTES)) return { ok: false, error: "Match length must be 1 minute to 30 days." };
+  const { error } = await db.from("tournaments").update({ match_minutes: min, match_hours: hoursFor(min) }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  if (!restartOpen) return done("Match length saved for the next matches.");
+  const endsAt = new Date(Date.now() + min * 60_000).toISOString();
+  const { error: e2, count } = await db
+    .from("matches")
+    .update({ ends_at: endsAt }, { count: "exact" })
+    .eq("tournament_id", id)
+    .eq("status", "open");
+  if (e2) return { ok: false, error: e2.message };
+  return engineThenDone(db, `Match length saved. ${count ?? 0} open match${count === 1 ? "" : "es"} now end in ${min} min.`);
 }
 
 export async function startQualifying(id: string): Promise<ActionResult> {

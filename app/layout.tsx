@@ -5,6 +5,7 @@ import { Analytics } from "@/components/Analytics";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { LiveClock } from "@/components/LiveClock";
 import { SITE_URL } from "@/lib/env";
 import "./globals.css";
 
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main className="flex-1 w-full">{children}</main>
         <Footer />
         <Analytics />
+        <LiveClock />
       </body>
     </html>
   );
