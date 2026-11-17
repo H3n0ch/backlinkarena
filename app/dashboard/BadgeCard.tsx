@@ -30,12 +30,15 @@ export function BadgeCard({
   productId,
   domain,
   badgeStatus,
+  compact = false,
 }: {
   siteUrl: string;
   slug: string;
   productId: string;
   domain: string;
   badgeStatus: "none" | "pending" | "verified";
+  /** Inside the dashboard's "get your seat" choice: no box, no heading of its own. */
+  compact?: boolean;
 }) {
   const [theme, setTheme] = useState<Theme>("light");
   const [format, setFormat] = useState<Format>("html");
@@ -49,11 +52,13 @@ export function BadgeCard({
   const badgePath = `/badge/${theme === "dark" ? "featured-dark.svg" : "featured.svg"}`;
 
   return (
-    <div className="mt-6 rounded-2xl border border-line bg-blue-soft/40 p-4 sm:p-5">
+    <div className={compact ? "mt-4" : "mt-6 rounded-2xl border border-line bg-blue-soft/40 p-4 sm:p-5"}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="flex items-center gap-2 font-display text-lg font-extrabold">
-            Link to us, skip qualifying
+          <p
+            className={`flex items-center gap-2 ${compact ? "text-sm font-semibold text-muted" : "font-display text-lg font-extrabold"}`}
+          >
+            {compact ? "Badge rules" : "Link to us, skip qualifying"}
             <button
               type="button"
               onClick={() => setShowRules((v) => !v)}
@@ -67,7 +72,7 @@ export function BadgeCard({
               i
             </button>
           </p>
-          <p className="mt-1 text-sm">
+          <p className={compact ? "hidden" : "mt-1 text-sm"}>
             Put a link to Backlink Arena on your website. As soon as we find it, you go{" "}
             <strong>straight into the bracket</strong>, no qualifying votes needed.
           </p>

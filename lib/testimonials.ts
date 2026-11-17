@@ -2,8 +2,8 @@
   Posts people made about Backlink Arena, shown in the "From the stands" wall on the homepage.
 
   Only add real posts, and link each one to the original so visitors can check it.
+  The section is hidden everywhere until there are MIN_TESTIMONIALS posts (preview: WALL_PREVIEW=1).
   Copy the text as written (trim if needed, but don't reword).
-  The wall stays hidden until there are at least MIN_TESTIMONIALS posts.
 */
 
 export type TestimonialSource = "x" | "linkedin" | "facebook" | "telegram" | "whatsapp" | "email";
@@ -52,8 +52,12 @@ const SAMPLES: Testimonial[] = SOURCES.map((source, i) => ({
   sample: true,
 }));
 
-/** Real posts; in development falls back to samples while there aren't enough real ones. */
+/**
+ * Real posts. To preview the layout with sample cards, run `next dev` with WALL_PREVIEW=1
+ * in .env.local (ignored in production builds).
+ */
 export function getTestimonials(): Testimonial[] {
-  if (TESTIMONIALS.length >= MIN_TESTIMONIALS || process.env.NODE_ENV !== "development") return TESTIMONIALS;
+  const preview = process.env.NODE_ENV === "development" && process.env.WALL_PREVIEW === "1";
+  if (!preview || TESTIMONIALS.length >= MIN_TESTIMONIALS) return TESTIMONIALS;
   return [...TESTIMONIALS, ...SAMPLES];
 }

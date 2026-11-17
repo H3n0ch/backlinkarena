@@ -104,6 +104,7 @@ export async function MatchScreen({
       initialCounts={counts}
       startsAt={match.starts_at}
       endsAt={match.ends_at}
+      pausedAt={tournament.paused_at ?? null}
       initialStatus={match.status}
       initialWinner={match.winner_product_id}
       viewer={{ loggedIn: Boolean(user), owns: ownsA || ownsB, votedFor, nextMatchId, allDone }}

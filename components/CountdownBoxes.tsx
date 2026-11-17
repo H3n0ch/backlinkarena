@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-/** DD : HH : MM : SS in glass boxes, sized for the dark bracket header. */
-export function CountdownBoxes({ to, label }: { to: string; label: string }) {
+/** DD : HH : MM : SS in glass boxes, sized for the dark bracket header. Frozen while `pausedAt` is set. */
+export function CountdownBoxes({ to, label, pausedAt = null }: { to: string; label: string; pausedAt?: string | null }) {
   const target = Date.parse(to);
   const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
+    if (pausedAt) return;
     const tick = () => setNow(Date.now());
     const first = setTimeout(tick, 0);
     const id = setInterval(tick, 1000);
@@ -15,9 +16,10 @@ export function CountdownBoxes({ to, label }: { to: string; label: string }) {
       clearTimeout(first);
       clearInterval(id);
     };
-  }, []);
+  }, [pausedAt]);
 
-  const left = now === null ? null : Math.max(0, target - now);
+  const at = pausedAt ? Date.parse(pausedAt) : now;
+  const left = at === null ? null : Math.max(0, target - at);
   const s = left === null ? 0 : Math.floor(left / 1000);
   const parts = [
     { v: Math.floor(s / 86400), l: "days" },
@@ -28,7 +30,7 @@ export function CountdownBoxes({ to, label }: { to: string; label: string }) {
 
   return (
     <div className="sm:text-right">
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-white/45">{label}</p>
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-white/45">{pausedAt ? `${label} · Paused` : label}</p>
       <div className="flex items-start gap-1.5">
         {parts.map((p, i) => (
           <div key={p.l} className="flex items-start gap-1.5">

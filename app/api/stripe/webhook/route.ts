@@ -1,14 +1,12 @@
 import type Stripe from "stripe";
-import { grantPass } from "@/lib/entries";
+import { recordPaidPass, refundPaidPass } from "@/lib/payments";
 import { stripe } from "@/lib/stripe";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
 /**
- * Stripe webhook. Subscribe to `checkout.session.completed` and
- * `checkout.session.async_payment_succeeded` in the Stripe dashboard.
- *
- * Each Checkout Session grants at most one pass: the session id is stored in `payments`
- * (unique), so Stripe's retries and duplicate deliveries are no-ops.
+ * Stripe webhook (kept for later; payments currently go through Dodo, see lib/payments.ts).
+ * Subscribe to `checkout.session.completed`, `checkout.session.async_payment_succeeded`
+ * and `charge.refunded` in the Stripe dashboard.
  */
 export async function POST(request: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -22,6 +20,16 @@ export async function POST(request: Request) {
     return new Response("Bad signature", { status: 400 });
   }
 
+  const db = createSupabaseAdmin();
+
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object;
+    if (!charge.refunded) return new Response("partial refund ignored");
+    const intent = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+    if (!intent) return new Response("no payment intent");
+    return refundPaidPass(db, { provider: "stripe", paymentRef: intent });
+  }
+
   if (event.type !== "checkout.session.completed" && event.type !== "checkout.session.async_payment_succeeded") {
     return new Response("ignored");
   }
@@ -29,26 +37,16 @@ export async function POST(request: Request) {
   if (session.payment_status !== "paid") return new Response("not paid yet");
 
   const productId = session.metadata?.product_id ?? session.client_reference_id;
-  if (!productId) return new Response("no product", { status: 200 });
+  if (!productId) return new Response("no product");
 
-  const db = createSupabaseAdmin();
-  const { error: insertError } = await db.from("payments").insert({
-    product_id: productId,
-    user_id: session.metadata?.user_id ?? null,
+  return recordPaidPass(db, {
+    provider: "stripe",
+    externalId: session.id,
+    paymentRef: typeof session.payment_intent === "string" ? session.payment_intent : null,
+    productId,
+    userId: session.metadata?.user_id ?? null,
     email: session.customer_details?.email ?? session.customer_email ?? null,
-    stripe_session_id: session.id,
-    stripe_payment_intent: typeof session.payment_intent === "string" ? session.payment_intent : null,
-    amount_total: session.amount_total,
+    amount: session.amount_total,
     currency: session.currency,
   });
-  if (insertError?.code === "23505") return new Response("already processed");
-  if (insertError) return new Response("db error", { status: 500 });
-
-  const granted = await grantPass(db, productId);
-  if (!granted.ok) {
-    // Let Stripe retry: remove the record so the retry isn't treated as a duplicate.
-    await db.from("payments").delete().eq("stripe_session_id", session.id);
-    return new Response("grant failed", { status: 500 });
-  }
-  return new Response("ok");
 }

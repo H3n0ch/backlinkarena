@@ -36,6 +36,33 @@ export async function skipQualifying(db: Admin, productId: string, path: EntryPa
  * the next tournament is created. The pass is used up once the brand gets a bracket spot.
  * Returns the tournament name it was entered into, or null if it is queued.
  */
+/**
+ * Takes back an unused Contender Pass (after a refund). If the brand sits in an open
+ * tournament on that pass, its entry falls back to badge (if verified) or free qualifying.
+ * A pass already used for a bracket spot can't be taken back; that's left to the admin.
+ */
+export async function revokePass(db: Admin, productId: string): Promise<{ ok: boolean }> {
+  const { data: p, error } = await db
+    .from("products")
+    .update({ pass_paid: false })
+    .eq("id", productId)
+    .select("badge_status")
+    .maybeSingle();
+  if (error) return { ok: false };
+  const fallback: EntryPath = p?.badge_status === "verified" ? "badge" : "free";
+  const { data: t } = await db.from("tournaments").select("id").in("status", ["draft", "qualifying"]).maybeSingle();
+  if (t) {
+    const { error: entryError } = await db
+      .from("entries")
+      .update({ entry_path: fallback })
+      .eq("tournament_id", t.id)
+      .eq("product_id", productId)
+      .eq("entry_path", "pass");
+    if (entryError) return { ok: false };
+  }
+  return { ok: true };
+}
+
 export async function grantPass(db: Admin, productId: string): Promise<{ ok: boolean; tournament: string | null }> {
   const { error } = await db.from("products").update({ pass_paid: true }).eq("id", productId);
   if (error) return { ok: false, tournament: null };

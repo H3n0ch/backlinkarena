@@ -123,6 +123,8 @@ export function MatchArena(props: {
   initialCounts: Counts;
   startsAt: string;
   endsAt: string;
+  /** Set while the tournament is paused: the clock freezes and voting is closed. */
+  pausedAt: string | null;
   initialStatus: "open" | "closed";
   initialWinner: string | null;
   viewer: Viewer;
@@ -474,7 +476,7 @@ export function MatchArena(props: {
             {props.roundLabel} ·{" "}
             {live ? (
               <span className="text-ink">
-                ends in <Countdown to={props.endsAt} />
+                ends in <Countdown to={props.endsAt} pausedAt={props.pausedAt} />
               </span>
             ) : (
               "voting closed"

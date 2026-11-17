@@ -47,6 +47,12 @@ export function safeHttpUrl(value: string | null | undefined): string | null {
   }
 }
 
+/**
+ * Cookie holding where to go after login. Survives Supabase falling back to the Site URL
+ * (redirect URL not in its allow-list), which drops the `next` query param.
+ */
+export const NEXT_COOKIE = "ba_next";
+
 /** Only same-site paths are allowed as a post-login destination (no "//evil.com"). */
 export function safeNext(next: string | null | undefined): string {
   return next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";

@@ -84,10 +84,13 @@ export function MatchupCard({
   match,
   a,
   b,
+  pausedAt = null,
 }: {
   match: Match & { counts: Counts };
   a?: Product;
   b?: Product;
+  /** Set while the tournament is paused: the clock freezes. */
+  pausedAt?: string | null;
 }) {
   const { a_votes, b_votes } = match.counts;
   const total = a_votes + b_votes;
@@ -122,7 +125,7 @@ export function MatchupCard({
             </span>
             Live
             <span className="font-mono tracking-normal text-white/80 tabular-nums normal-case">
-              <Countdown to={match.ends_at} endedText="ending" />
+              <Countdown to={match.ends_at} endedText="ending" pausedAt={pausedAt} />
             </span>
           </span>
         )}

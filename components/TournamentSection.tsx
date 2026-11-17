@@ -63,7 +63,7 @@ function BoardHeader({
   eyebrow: string;
   title: string;
   live?: boolean;
-  countdown?: { to: string; label: string };
+  countdown?: { to: string; label: string; pausedAt?: string | null };
 }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
@@ -81,7 +81,7 @@ function BoardHeader({
           {title}
         </p>
       </div>
-      {countdown && <CountdownBoxes to={countdown.to} label={countdown.label} />}
+      {countdown && <CountdownBoxes to={countdown.to} label={countdown.label} pausedAt={countdown.pausedAt} />}
     </div>
   );
 }
@@ -105,6 +105,7 @@ async function Bracket({ tournament, carousel }: { tournament: Tournament; carou
         match={m}
         a={m.product_a ? products.get(m.product_a) : undefined}
         b={m.product_b ? products.get(m.product_b) : undefined}
+        pausedAt={tournament.paused_at}
       />
     ));
 
@@ -120,8 +121,8 @@ async function Bracket({ tournament, carousel }: { tournament: Tournament; carou
           <BoardHeader
             eyebrow={finished ? "Bracket · Closed" : tournament.paused_at ? "Bracket · Paused" : "Bracket · Live"}
             title={finished ? "Final result" : roundName(round, tournament.bracket_size)}
-            live={!finished && live.length > 0}
-            countdown={live[0] ? { to: live[0].ends_at, label: "Time until next round" } : undefined}
+            live={!finished && live.length > 0 && !tournament.paused_at}
+            countdown={live[0] ? { to: live[0].ends_at, label: "Time until next round", pausedAt: tournament.paused_at } : undefined}
           />
         }
       />
@@ -258,10 +259,10 @@ async function Qualifying({ tournament }: { tournament: Tournament }) {
           <BoardHeader
             eyebrow={tournament.paused_at ? "Paused" : qualifying ? "Qualifying" : "Entries open"}
             title="Projected bracket"
-            live={qualifying}
+            live={qualifying && !tournament.paused_at}
             countdown={
               qualifying && tournament.qualifying_ends_at
-                ? { to: tournament.qualifying_ends_at, label: "Bracket locks in" }
+                ? { to: tournament.qualifying_ends_at, label: "Bracket locks in", pausedAt: tournament.paused_at }
                 : undefined
             }
           />

@@ -1,7 +1,7 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { safeNext } from "@/lib/url";
+import { NEXT_COOKIE, safeNext } from "@/lib/url";
 
 /** Why a login link didn't work. Shown as a plain message on /login. */
 type Reason = "used" | "expired" | "browser" | "provider" | "failed";
@@ -22,9 +22,13 @@ function reasonOf(code: string | null | undefined, message = ""): Reason {
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
-  const next = safeNext(searchParams.get("next"));
+  const next = safeNext(searchParams.get("next") ?? readNextCookie(request));
   const supabase = await createSupabaseServer();
-  const ok = () => NextResponse.redirect(new URL(next, origin));
+  const ok = () => {
+    const res = NextResponse.redirect(new URL(next, origin));
+    res.cookies.delete(NEXT_COOKIE);
+    return res;
+  };
 
   let reason: Reason = reasonOf(searchParams.get("error_code"), searchParams.get("error_description") ?? "");
   if (searchParams.get("error")) {
@@ -59,4 +63,15 @@ export async function GET(request: NextRequest) {
   if (data.user) return ok();
 
   return NextResponse.redirect(new URL(`/login?error=${reason}&next=${encodeURIComponent(next)}`, origin));
+}
+
+/** The post-login destination saved by the login form (see NEXT_COOKIE). */
+function readNextCookie(request: NextRequest): string | null {
+  const raw = request.cookies.get(NEXT_COOKIE)?.value;
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
 }

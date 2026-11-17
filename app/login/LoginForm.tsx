@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
-import { safeNext } from "@/lib/url";
+import { NEXT_COOKIE, safeNext } from "@/lib/url";
 
 /** Plain-language reason for a failed login (send errors from Supabase, or ?error= from the callback). */
 function errorMessage(reason: string): string {
@@ -37,8 +37,10 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
   );
   const [reason, setReason] = useState(params.get("error") ?? "");
 
-  const callback = () =>
-    `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+  const callback = () => {
+    document.cookie = `${NEXT_COOKIE}=${encodeURIComponent(next)}; path=/; max-age=1800; samesite=lax`;
+    return `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+  };
 
   async function google() {
     const supabase = createSupabaseBrowser();

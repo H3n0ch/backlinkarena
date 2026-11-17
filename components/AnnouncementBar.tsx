@@ -26,6 +26,8 @@ export async function AnnouncementBar() {
     label = `${t.name} opens soon · Entries are open`;
   }
 
+  if (t?.paused_at && tag === "Live") tag = "Paused";
+
   return (
     <div className="bg-dark-gradient text-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2 text-xs sm:justify-between sm:text-sm">
@@ -42,7 +44,7 @@ export async function AnnouncementBar() {
           <p className="font-semibold">
             {deadline.text}{" "}
             <span className="rounded bg-[image:var(--grad-brand)] px-1.5 py-0.5 font-mono font-bold">
-              <Countdown to={deadline.to} endedText="now" />
+              <Countdown to={deadline.to} endedText="now" pausedAt={t?.paused_at} />
             </span>
           </p>
         )}

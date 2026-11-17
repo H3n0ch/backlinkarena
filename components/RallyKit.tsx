@@ -74,6 +74,7 @@ export function RallyKit({
   myVotes,
   rivalVotes,
   imageUrl,
+  pausedAt = null,
 }: {
   /** Which side of the matchup you are (a = left/orange, b = right/teal), as on the matchup card. */
   mySide: "a" | "b";
@@ -87,6 +88,8 @@ export function RallyKit({
   myVotes: number;
   rivalVotes: number;
   imageUrl: string;
+  /** Set while the tournament is paused: the clock freezes. */
+  pausedAt?: string | null;
 }) {
   const [channel, setChannel] = useState<Channel>("x");
   const s = standing(myVotes, rivalVotes, rival);
@@ -123,7 +126,7 @@ export function RallyKit({
           </span>
           Live
           <span className="font-mono tracking-normal text-white/80 tabular-nums normal-case">
-            <Countdown to={endsAt} endedText="ending" />
+            <Countdown to={endsAt} endedText="ending" pausedAt={pausedAt} />
           </span>
         </span>
       </div>

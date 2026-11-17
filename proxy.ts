@@ -8,8 +8,8 @@ export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   if (pathname === "/" && (searchParams.has("code") || searchParams.has("token_hash"))) {
     const to = request.nextUrl.clone();
+    // No `next` here: the callback reads it from the cookie the login form set (else /dashboard).
     to.pathname = "/auth/callback";
-    if (!to.searchParams.has("next")) to.searchParams.set("next", "/dashboard");
     return NextResponse.redirect(to);
   }
 

@@ -64,16 +64,21 @@ export function JoinFlow() {
 
   // Resume after login, or auto-preview a URL passed from the landing page.
   useEffect(() => {
-    if (autoRan.current) return;
-    autoRan.current = true;
-    const saved = params.get("resume") ? readDraft() : null;
-    const initial = params.get("url");
+    // Guard inside the timer: in dev, Strict Mode runs this effect twice and the cleanup
+    // cancels the first timer, so marking "ran" up front would skip the resume entirely.
     const t = setTimeout(() => {
+      if (autoRan.current) return;
+      autoRan.current = true;
+      const saved = params.get("resume") ? readDraft() : null;
+      const initial = params.get("url");
       if (saved) {
         // Back from login: show the draft and finish saving it without another click.
         setDraft(saved);
         save(saved, true);
       } else if (initial) preview(initial);
+      else if (params.get("resume")) {
+        setError("You're logged in. We couldn't find the site you entered (it may have expired), so please add it once more.");
+      }
     }, 0);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps

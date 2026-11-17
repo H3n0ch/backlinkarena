@@ -51,68 +51,78 @@ function statusFor(t: Tournament | null, entry: Entry | undefined, productId: st
   return t.status === "bracket" ? { label: "In the bracket", tone: "mint" } : { label: "Played", tone: "muted" };
 }
 
-/** Guided "finish your guaranteed spot" step for the path picked on the pricing card. */
-function NextStep({
+/**
+ * The one decision a site without a seat has to make: pay, or add our badge.
+ * `plan` (picked on the pricing card) opens the badge steps or highlights the payment.
+ */
+function GetSeat({
+  product: p,
   plan,
-  products,
-  canEnter,
+  when,
+  note,
 }: {
-  plan: "badge" | "pass";
-  products: Product[];
-  canEnter: boolean;
+  product: Product;
+  plan: "badge" | "pass" | null;
+  when: string;
+  note: string | null;
 }) {
-  const when = canEnter ? "this tournament" : "the next tournament";
   return (
-    <section className="border-gradient mt-6 rounded-[0.875rem] p-5">
-      <p className="text-xs font-bold uppercase tracking-widest text-red-dark">Next step</p>
-      <h2 className="font-display text-2xl font-extrabold">Finish your guaranteed spot</h2>
+    <section className="border-gradient mt-4 rounded-[0.875rem] p-5">
+      <h2 className="font-display text-2xl font-extrabold">Get your seat in {when}</h2>
       <p className="mt-1 text-sm text-muted">
-        {plan === "pass"
-          ? `Pay once and skip qualifying in ${when}. It never adds votes inside a match.`
-          : `Add a link to Backlink Arena on your site. Once we find it, you skip qualifying in ${when}, free.`}
+        {note ? `${note} ` : ""}Pick one. Either way you skip qualifying, and it never adds votes inside a match.
       </p>
-      <ul className="mt-4 flex flex-col gap-3">
-        {products.map((p) => {
-          const guaranteed = p.pass_paid || p.badge_status === "verified";
-          return (
-            <li key={p.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-white p-3">
-              <ProductLogo src={p.logo_url} name={p.name} size={40} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-bold">{p.name}</p>
-                <p className="truncate text-xs text-muted">{p.domain}</p>
-              </div>
-              {guaranteed ? (
-                <span className="rounded-full bg-mint-soft px-3 py-1 text-sm font-bold text-mint">
-                  ✓ Already guaranteed ({p.pass_paid ? "paid" : "badge"})
-                </span>
-              ) : plan === "pass" ? (
-                STRIPE_CONFIGURED ? (
-                  <form action={startPassCheckout.bind(null, p.id)}>
-                    <button className="btn bg-red text-sm text-white">Pay $79 →</button>
-                  </form>
-                ) : (
-                  <span className="text-sm font-semibold text-muted">Payments coming soon</span>
-                )
-              ) : (
-                <a href={`#badge-${p.id}`} className="btn bg-blue text-sm text-white">
-                  {p.badge_status === "pending" ? "Badge check pending · view" : "Show me how →"}
-                </a>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      <p className="mt-3 text-xs text-muted">
-        {plan === "pass" ? (
-          <>
-            Rather pay nothing? <Link href="/dashboard?plan=badge" className="font-semibold underline">Add our badge instead</Link>.
-          </>
-        ) : (
-          <>
-            Can&apos;t add a link? <Link href="/dashboard?plan=pass" className="font-semibold underline">Pay $79 instead</Link>.
-          </>
-        )}
-      </p>
+
+      <div className="mt-4 flex flex-col gap-3">
+        <div
+          className={`flex flex-wrap items-center gap-3 rounded-xl border bg-white p-4 ${
+            plan === "pass" ? "border-red ring-2 ring-red/30" : "border-line"
+          }`}
+        >
+          <div className="min-w-0 flex-1">
+            <p className="font-bold">Pay $79</p>
+            <p className="text-sm text-muted">Your seat is secured right away. One-time payment, one tournament.</p>
+          </div>
+          {STRIPE_CONFIGURED ? (
+            <form action={startPassCheckout.bind(null, p.id)}>
+              <button className="btn bg-red text-white">Pay $79 →</button>
+            </form>
+          ) : (
+            <span className="text-sm font-semibold text-muted">Coming soon</span>
+          )}
+        </div>
+
+        <details
+          id={`badge-${p.id}`}
+          open={plan === "badge" || p.badge_status === "pending"}
+          className="group scroll-mt-6 rounded-xl border border-line bg-white p-4"
+        >
+          <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 [&::-webkit-details-marker]:hidden">
+            <span className="min-w-0 flex-1">
+              <span className="block font-bold">Add our badge · free</span>
+              <span className="block text-sm text-muted">
+                Put a link to Backlink Arena on your site. Once we&apos;ve verified it, you&apos;re in.
+              </span>
+            </span>
+            {p.badge_status === "pending" ? (
+              <span className="rounded-full bg-sun/40 px-3 py-1 text-sm font-bold">⏳ Check pending</span>
+            ) : (
+              <span className="btn bg-blue text-white">
+                <span className="group-open:hidden">Show me how ▾</span>
+                <span className="hidden group-open:inline">Hide steps ▴</span>
+              </span>
+            )}
+          </summary>
+          <BadgeCard
+            siteUrl={PUBLIC_SITE_URL}
+            slug={p.slug}
+            productId={p.id}
+            domain={p.domain}
+            badgeStatus={p.badge_status}
+            compact
+          />
+        </details>
+      </div>
     </section>
   );
 }
@@ -318,21 +328,9 @@ async function Dashboard({
       {joined && (
         <p className="mt-4 rounded-2xl border border-line bg-mint-soft p-3 font-semibold">
           {plan
-            ? "Your website is in! One step left: finish your guaranteed spot below."
-            : "You're in! Share your page to collect votes."}
+            ? "Your website is in! One step left: pick how to get your seat below."
+            : "Your website is in!"}
         </p>
-      )}
-
-      {plan && products.length > 0 && (
-        <NextStep
-          plan={plan}
-          products={
-            products.filter((p) => p.slug === joined).length
-              ? products.filter((p) => p.slug === joined)
-              : products
-          }
-          canEnter={canEnter}
-        />
       )}
 
       {products.length === 0 ? (
@@ -384,14 +382,6 @@ async function Dashboard({
                     </p>
                   )}
 
-                  {!entry && tournament && !canEnter && tournament.status !== "finished" && (
-                    <p className="mt-4 rounded-2xl border border-line bg-sun/30 p-3 text-sm">
-                      <span className="font-bold">Added after this bracket started.</span> {p.name} isn&apos;t in{" "}
-                      {tournament.name}, so there&apos;s no matchup to rally for yet. It can enter when the next
-                      tournament opens.
-                    </p>
-                  )}
-
                   {!entry && canEnter && (
                     <div className="mt-4">
                       <EnterButton productId={p.id} />
@@ -435,50 +425,39 @@ async function Dashboard({
                           myVotes={c ? (mine === "a" ? c.a_votes : c.b_votes) : 0}
                           rivalVotes={c ? (mine === "a" ? c.b_votes : c.a_votes) : 0}
                           imageUrl={`${pathOf(current)}/opengraph-image`}
+                          pausedAt={tournament.paused_at}
                         />
                       );
                     })()
                   ) : (
-                    <div className="mt-5">
+                    entry && <div className="mt-5">
                       <ShareButtons link={shareLink} title={current ? "Share your last matchup" : "Share your entry"} />
                     </div>
                   )}
 
-                  <div
-                    id={`badge-${p.id}`}
-                    className={`scroll-mt-6 rounded-2xl ${plan === "badge" ? "ring-2 ring-blue ring-offset-4" : ""}`}
-                  >
-                    <BadgeCard siteUrl={PUBLIC_SITE_URL} slug={p.slug} productId={p.id} domain={p.domain} badgeStatus={p.badge_status} />
-                  </div>
-
-                  {p.pass_paid && (
-                    <p className="mt-4 rounded-2xl border border-line bg-blue-soft p-3 text-sm font-semibold">
-                      ✓ Guaranteed spot paid.{" "}
-                      {canEnter
+                  {p.pass_paid || p.badge_status === "verified" ? (
+                    <p className="mt-4 rounded-2xl border border-line bg-mint-soft p-3 text-sm font-semibold">
+                      ✓ Your seat is secured ({p.pass_paid ? "paid" : "badge verified"}).{" "}
+                      {canEnter && entry
                         ? "You skip qualifying in this tournament."
                         : "You'll be entered automatically when the next tournament opens."}
+                      {!p.pass_paid && " Keep the badge on your site."}
                     </p>
-                  )}
-
-                  {!p.pass_paid &&
-                    p.badge_status !== "verified" &&
+                  ) : (
                     (!entry || entry.entry_path === "free") &&
                     current?.status !== "open" && (
-                      <div className="mt-4 rounded-2xl border border-line bg-sun/30 p-4">
-                        <p className="font-display text-lg font-extrabold">No badge? Get a guaranteed spot for $79</p>
-                        <p className="mt-1 text-sm">
-                          Skip qualifying {canEnter ? "in this tournament" : "in the next tournament"}, no badge needed.
-                          One tournament, one-time payment. It never adds votes inside a match.
-                        </p>
-                        {STRIPE_CONFIGURED ? (
-                          <form action={startPassCheckout.bind(null, p.id)}>
-                            <button className="btn mt-3 bg-ink text-white">Get a guaranteed spot · $79</button>
-                          </form>
-                        ) : (
-                          <p className="mt-3 text-sm font-semibold">Coming soon.</p>
-                        )}
-                      </div>
-                    )}
+                      <GetSeat
+                        product={p}
+                        plan={plan}
+                        when={canEnter ? "this tournament" : "the next tournament"}
+                        note={
+                          !entry && tournament && !canEnter && tournament.status !== "finished"
+                            ? `${tournament.name} has already started.`
+                            : null
+                        }
+                      />
+                    )
+                  )}
 
                   {current && (
                     <div className="mt-auto pt-5">
