@@ -11,8 +11,8 @@ import { requireUser } from "@/lib/auth";
 import { getCurrentOrLastTournament, getProductsByIds, PRODUCT_PUBLIC_COLUMNS } from "@/lib/data";
 import { startPassCheckout } from "@/app/actions/pass";
 import { PUBLIC_SITE_URL, SITE_URL } from "@/lib/env";
-import { OFFER_DAYS, PARTICIPANT_DISCOUNT, participantPrice, SERVICES } from "@/lib/services";
-import { STRIPE_CONFIGURED } from "@/lib/stripe";
+import { hasFixedPrice, OFFER_DAYS, PARTICIPANT_DISCOUNT, participantPrice, SERVICES } from "@/lib/services";
+import { PAYMENTS_CONFIGURED } from "@/lib/payments";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { matchPath, matchShareUrl } from "@/lib/share";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -83,7 +83,7 @@ function GetSeat({
             <p className="font-bold">Pay $79</p>
             <p className="text-sm text-muted">Your seat is secured right away. One-time payment, one tournament.</p>
           </div>
-          {STRIPE_CONFIGURED ? (
+          {PAYMENTS_CONFIGURED ? (
             <form action={startPassCheckout.bind(null, p.id)}>
               <button className="btn bg-red text-white">Pay $79 →</button>
             </form>
@@ -192,10 +192,17 @@ function ParticipantOffer({
                   <span className="block text-xs text-muted">{t.detail}</span>
                 </span>
                 <span className="flex items-center gap-3">
-                  <span className="text-right">
-                    <span className="block text-xs text-muted line-through">{t.price}</span>
-                    <span className="block font-display text-xl font-extrabold">{participantPrice(t.price)}</span>
-                  </span>
+                  {hasFixedPrice(t.price) ? (
+                    <span className="text-right">
+                      <span className="block text-xs text-muted line-through">{t.price}</span>
+                      <span className="block font-display text-xl font-extrabold">{participantPrice(t.price)}</span>
+                    </span>
+                  ) : (
+                    <span className="text-right">
+                      <span className="block text-xs text-muted">{t.price}</span>
+                      <span className="block font-display text-xl font-extrabold">{pct}</span>
+                    </span>
+                  )}
                   <LeadButton
                     label="Claim →"
                     service={option}
@@ -220,6 +227,7 @@ const PASS_NOTICE: Record<string, { text: string; tone: string }> = {
     tone: "bg-mint-soft",
   },
   cancelled: { text: "Payment cancelled. Nothing was charged.", tone: "bg-paper" },
+  failed: { text: "Payment didn't go through. Nothing was charged. Please try again.", tone: "bg-red-soft" },
   already: { text: "This site already has an unused guaranteed spot.", tone: "bg-blue-soft" },
   unavailable: { text: "Payments aren't switched on yet. Please try again later.", tone: "bg-sun/30" },
   error: { text: "Couldn't start the payment. Please try again.", tone: "bg-red-soft" },
@@ -240,7 +248,11 @@ async function Dashboard({
 }) {
   const params = await searchParams;
   const joined = params.joined;
-  const pass = typeof params.pass === "string" ? params.pass : undefined;
+  // Dodo appends `status` to the return URL: only "succeeded" means paid (display only, the
+  // webhook grants the pass).
+  const passParam = typeof params.pass === "string" ? params.pass : undefined;
+  const pass =
+    passParam === "success" && typeof params.status === "string" && params.status !== "succeeded" ? "failed" : passParam;
   // Path picked on the pricing card: "badge" or "pass" (anything else = no guided step).
   const plan = params.plan === "badge" || params.plan === "pass" ? params.plan : null;
   const user = await requireUser(plan ? `/dashboard?plan=${plan}` : "/dashboard");

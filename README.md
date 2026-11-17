@@ -13,7 +13,7 @@ The business side: losing brands get a time-limited discount on our paid backlin
 | Phase | What happens |
 |---|---|
 | **Draft** | The admin creates the tournament (name, bracket of 8 or 16, match length, qualifying end). |
-| **Qualifying** | Brands enter. **Free** entries collect votes on a public leaderboard. **Badge** entries (our badge verified on their site) and **Pass** entries ($79 guaranteed spot via Stripe) skip qualifying. |
+| **Qualifying** | Brands enter. **Free** entries collect votes on a public leaderboard. **Badge** entries (our badge verified on their site) and **Pass** entries ($79 guaranteed spot via Dodo Payments) skip qualifying. |
 | **Bracket** | When qualifying ends with a full field, the bracket locks: seats placed by the admin stay, empty seats fill with pass/badge first, then the most-voted free entries. Round 1 pairs seat 1 v 2, 3 v 4… If the field isn't full, qualifying extends 24h at a time. |
 | **Matches** | Each match runs for a set time (default 24h). Visitors vote once per matchup; the brand with more votes advances. Winners meet winners. |
 | **Finished** | The champion's backlink is placed by hand and listed on `/winners`. Everyone else gets 30% off our services for 7 days, plus their exposure stats. |
@@ -43,7 +43,7 @@ Brands are never paired with a direct competitor.
 - **Next.js 16** (App Router, Cache Components, Server Actions, `proxy.ts`), **React 19**, **Tailwind CSS 4**
 - **Supabase**: Postgres, Auth, Row Level Security. The tournament logic lives in the database.
 - **Netlify**: hosting, plus a scheduled function that runs the engine every 5 minutes
-- **Stripe** for the $79 pass, **Resend** for email, **zod** for validation, **vitest** for tests
+- **Dodo Payments** for the $79 pass (Stripe kept wired up for later, `PAYMENT_PROVIDER`), **Resend** for email, **zod** for validation, **vitest** for tests
 
 ## Project structure
 
@@ -51,11 +51,11 @@ Brands are never paired with a direct competitor.
 app/                  Pages and routes (App Router)
   actions/            Server actions: join, vote, badge, pass, leads, admin, CRM, control room
   admin/              Admin panel: control room, CRM, leads, settings
-  api/                Stripe webhook, vote counts, tracking, badge endpoints
+  api/                Dodo + Stripe webhooks, vote counts, tracking, badge endpoints
   auth/callback/      Login callback (email token_hash + Google OAuth)
   match/ vs/ p/       Public matchup and brand pages (+ share images)
 components/           UI: matchup cards, bracket, carousel, Rally kit, share buttons…
-lib/                  Data access, auth, env, URLs, Stripe, email
+lib/                  Data access, auth, env, URLs, payments (Dodo, Stripe), email
   email-layout.ts     Email design system (dark + gold)
   email-templates.ts  Every email we send
   og-card.tsx         Matchup share image
@@ -129,7 +129,9 @@ See [`.env.local.example`](.env.local.example) for details.
 | `ADMIN_PASSWORD` | Second factor for `/admin` |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | Contact links; fallback for admin notifications |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google sign-in (same client as in Supabase) |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PASS_PRICE_ID` | $79 guaranteed spot. Without them the buy button shows "Coming soon" |
+| `PAYMENT_PROVIDER` | `dodo` (default) or `stripe`: which provider sells the $79 guaranteed spot |
+| `DODO_PAYMENTS_API_KEY`, `DODO_PAYMENTS_ENVIRONMENT`, `DODO_PASS_PRODUCT_ID`, `DODO_PAYMENTS_WEBHOOK_KEY` | Dodo Payments (active). Without the key and product id the buy button shows "Coming soon" |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PASS_PRICE_ID` | Stripe, kept for later (`PAYMENT_PROVIDER=stripe`) |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `ADMIN_EMAIL` | App emails. Without the key emails are skipped and nothing breaks |
 | `PUBLIC_SITE_URL` | Optional: address inside badge codes (defaults to the Netlify URL) |
 
@@ -141,7 +143,12 @@ See [`.env.local.example`](.env.local.example) for details.
 4. During the bracket: matches close and advance on their own. Use pause, disqualify or vote adjustments only when needed.
 5. **After the final:** place the winner's backlink, paste its URL under "Finished tournaments", and follow up on leads from the participant offer.
 
-Rules and privacy text: [`app/rules/page.tsx`](app/rules/page.tsx) and [`app/privacy/page.tsx`](app/privacy/page.tsx).
+### Legal pages
+
+- **Rules** ([`app/rules/page.tsx`](app/rules/page.tsx)) and **privacy policy** ([`app/privacy/page.tsx`](app/privacy/page.tsx)) both describe what the code actually does. Change the engine or a data flow (new cookie, new provider, new email) → update the matching page and its "Last updated" date.
+- The privacy policy shows `NEXT_PUBLIC_CONTACT_EMAIL` for data requests (falls back to "the footer" if unset), so set it before launch.
+- **Data requests** (copy, correction, deletion) arrive by email and are promised within 30 days. There is no self-serve "delete account" yet: delete the user in Supabase → Authentication → Users. Their profile, products, entries and the votes they cast are deleted with it. **Exception:** if one of their brands played in a bracket (it appears in `matches` or received `votes`), the delete is blocked by foreign keys without `on delete`. In that case, change the profile email to an anonymous placeholder and remove the brand's description and logo instead, so tournament results stay intact.
+- **To do once the company exists:** name the legal entity and address in the privacy policy's "Who we are" section.
 
 ## Scripts
 

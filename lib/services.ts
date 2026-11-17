@@ -10,7 +10,7 @@
  *   3 links  = 3x190            = $570   cost + $300  -> $870
  *   5 links  = 4x190 + 1x410    = $1,170 cost + $500  -> $1,670
  *   10 links = 7x190 + 3x410    = $2,560 cost + $1,000 -> $3,560
- *   media    = 650                          cost + $100  -> $750
+ * Press features have no fixed price: quoted per outlet ("On request").
  */
 
 export type ServiceTier = {
@@ -53,18 +53,22 @@ export const SERVICES: Service[] = [
     featured: true,
   },
   {
+    // One-off press features (USA Today and similar). No checkout and no fixed price yet:
+    // inquiries only, to test demand. Big outlets usually label these "Sponsored" and often
+    // nofollow, so the copy sells trust and visibility, never link power.
     id: "media",
-    name: "Media Placement",
-    tagline: "Get your brand featured in online media and publications.",
-    price: "$750",
-    priceUnit: "per feature",
+    name: "Press Feature",
+    tagline: "Get your brand into well-known online media. One feature, one payment, no retainer.",
+    price: "On request",
+    priceUnit: "one-time",
     features: [
-      "We pitch your story to relevant media outlets",
-      "Feature or mention with a link to your site",
-      "Credibility you can show on your website",
+      "Feature in established online media and news sites",
+      "An \"As seen in\" logo to show on your website",
+      "Trust for visitors, and a source AI search tools like ChatGPT can cite",
+      "Marked as sponsored where the outlet requires it",
       "Report with the published article",
     ],
-    cta: "Talk to us",
+    cta: "Request a quote",
   },
 ];
 
@@ -72,7 +76,12 @@ export const SERVICES: Service[] = [
 export const PARTICIPANT_DISCOUNT = 0.3;
 export const OFFER_DAYS = 7;
 
-/** "$870" -> "$609" at the participant discount. */
+/** True for a real amount ("$870"), false for "On request". */
+export function hasFixedPrice(price: string): boolean {
+  return /\d/.test(price);
+}
+
+/** "$870" -> "$609" at the participant discount. "On request" stays as is. */
 export function participantPrice(price: string): string {
   const n = Number(price.replace(/[^\d.]/g, ""));
   if (!n) return price;

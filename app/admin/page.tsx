@@ -441,7 +441,7 @@ async function Admin() {
                               <ActionButton
                                 action={markPassPaid.bind(null, w.productId)}
                                 label="Mark paid"
-                                confirm={`Mark ${w.name} as paid ($79 pass)? Use this for payments made outside Stripe.`}
+                                confirm={`Mark ${w.name} as paid ($79 pass)? Use this for payments made outside the payment provider.`}
                                 className={small}
                               />
                             )}

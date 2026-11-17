@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LeadButton } from "@/components/LeadButton";
-import { SERVICES, type Service } from "@/lib/services";
+import { hasFixedPrice, SERVICES, type Service } from "@/lib/services";
 
 /** Option preselected in the lead form: the "Most popular" tier, else the first. */
 function defaultOption(s: Service) {
@@ -17,16 +17,19 @@ function Check() {
   );
 }
 
-export function Services() {
+/** `page`: rendered as the /services page (H1, search-focused copy). Default: homepage section. */
+export function Services({ page = false }: { page?: boolean }) {
+  const Heading = page ? "h1" : "h2";
   return (
-    <section id="services" className="mx-auto mt-24 max-w-5xl scroll-mt-20 px-4">
+    <section id="services" className={`mx-auto max-w-5xl scroll-mt-20 px-4 ${page ? "pt-12 sm:pt-16" : "mt-24"}`}>
       <p className="text-gradient mx-auto w-fit text-center text-xs font-bold uppercase tracking-widest">Our service</p>
-      <h2 className="headline mt-2 text-center text-4xl sm:text-5xl">
-        Backlinks that <span className="text-gradient">actually count</span>
-      </h2>
+      <Heading className="headline mt-2 text-center text-4xl sm:text-5xl">
+        {page ? "Buy high DA backlinks " : "Backlinks "}that <span className="text-gradient">actually count</span>
+      </Heading>
       <p className="mx-auto mt-3 max-w-xl text-center text-muted">
-        The arena is how you meet us. Placing your links is what we do: real content on relevant sites in your niche, no
-        PBNs and no link farms.
+        {page
+          ? "Do-follow links in real content on relevant sites in your niche, placed through manual outreach. No PBNs and no link farms."
+          : "The arena is how you meet us. Placing your links is what we do: real content on relevant sites in your niche, no PBNs and no link farms."}
       </p>
 
       <div className="mt-10 grid gap-4 md:grid-cols-2">
@@ -62,7 +65,9 @@ export function Services() {
               </ul>
             ) : (
               <p className="mt-5 font-display text-4xl font-extrabold">
-                <span className="mr-1 block text-sm font-semibold text-muted">Starts at</span>
+                {s.price && hasFixedPrice(s.price) && (
+                  <span className="mr-1 block text-sm font-semibold text-muted">Starts at</span>
+                )}
                 {s.price} <span className="text-sm font-semibold text-muted">{s.priceUnit}</span>
               </p>
             )}
@@ -93,6 +98,13 @@ export function Services() {
         </Link>
         .
       </p>
+      {!page && (
+        <p className="mt-4 text-center text-sm">
+          <Link href="/services" className="font-semibold text-red-dark hover:underline">
+            How our link building works →
+          </Link>
+        </p>
+      )}
     </section>
   );
 }

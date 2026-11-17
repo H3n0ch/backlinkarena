@@ -24,7 +24,7 @@ async function loadFont(axis: string): Promise<ArrayBuffer> {
 }
 
 /** Loads once per server instance; falls back to the default font if Google is unreachable. */
-function getFonts(): Promise<OgFont[]> {
+export function getFonts(): Promise<OgFont[]> {
   fontsPromise ??= Promise.all([loadFont("ital,wght@1,900"), loadFont("wght@800")])
     .then(([black, bold]): OgFont[] => [
       { name: DISPLAY, data: black, weight: 900, style: "italic" },

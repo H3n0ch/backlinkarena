@@ -6,6 +6,7 @@ import { ProductLogo } from "@/components/ProductLogo";
 import { Services } from "@/components/Services";
 import { TournamentSection } from "@/components/TournamentSection";
 import { WallOfLove } from "@/components/WallOfLove";
+import { faqSchema, JsonLd } from "@/lib/json-ld";
 import { getArenaStats, getCurrentOrLastTournament, getRecentProducts, getWinners } from "@/lib/data";
 
 export default function Home() {
@@ -88,10 +89,10 @@ function Hero() {
         <span className="h-1.5 w-1.5 rounded-full bg-[image:var(--grad-brand)]" /> DA 50+ backlinks · Free to enter
       </span>
       <h1 className="headline text-5xl sm:text-7xl">
-        Battle for <span className="text-gradient animate-shimmer">backlinks.</span>
+        Battle for <span className="text-gradient animate-shimmer">free backlinks.</span>
       </h1>
       <p className="mx-auto mt-5 max-w-xl text-base sm:text-lg">
-        Win a <strong>DA 50+ backlink</strong> in your niche. Every brand shares its matchup to win votes, so your
+        Win a free <strong>DA 50+ backlink</strong> in your niche. Every brand shares its matchup to win votes, so your
         site reaches <strong>audiences beyond your own</strong>.
       </p>
 
@@ -422,6 +423,7 @@ const FAQ = [
 function Faq() {
   return (
     <section id="faq" className="mx-auto mt-24 max-w-3xl scroll-mt-20 px-4 pb-6">
+      <JsonLd data={faqSchema(FAQ)} />
       <p className="text-gradient mx-auto w-fit text-center text-xs font-bold uppercase tracking-widest">FAQ</p>
       <h2 className="headline mt-2 text-center text-4xl sm:text-5xl">
         Before you <span className="text-gradient">enter</span>
