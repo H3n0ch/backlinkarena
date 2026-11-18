@@ -19,7 +19,7 @@ const KIND_LABEL: Record<Seat["kind"], string> = { pass: "Pass", badge: "Badge",
 /**
  * Visual fill status of the active tournament: one cell per bracket spot, who would get it
  * right now (guaranteed first, then free entries by votes), what's missing before the
- * bracket can start, and which paid / badge brands are waiting for the next tournament.
+ * bracket can start, and which paid brands are waiting for the next tournament.
  */
 export function FillStatus({
   tournament,
@@ -38,7 +38,7 @@ export function FillStatus({
   const byId = new Map(products.map((p) => [p.id, p]));
   const open = tournament && (tournament.status === "draft" || tournament.status === "qualifying");
   const entered = new Set(open ? entries.map((e) => e.product_id) : []);
-  const waiting = products.filter((p) => (p.pass_paid || p.badge_status === "verified") && !entered.has(p.id));
+  const waiting = products.filter((p) => p.pass_paid && !entered.has(p.id));
 
   return (
     <section className="card p-5">
@@ -53,7 +53,7 @@ export function FillStatus({
           <QualifyingFill tournament={tournament} entries={entries} byId={byId} qualifyingVotes={qualifyingVotes} />
         )
       ) : (
-        <p className="mt-3 text-sm text-muted">No tournament is open. Create one: everyone in the queue below is entered automatically.</p>
+        <p className="mt-3 text-sm text-muted">No tournament is open. Create one: the paid passes below are entered automatically.</p>
       )}
 
       <div className="mt-6 border-t border-line pt-4">
@@ -61,14 +61,14 @@ export function FillStatus({
           Waiting for the next tournament <span className="text-muted">({waiting.length})</span>
         </h3>
         <p className="text-xs text-muted">
-          Paid passes and verified badges not in an open tournament. They are entered automatically when you create
-          the next one.
+          Paid passes not in an open tournament. They are entered automatically when you create the next one.
+          Badge brands enter themselves.
         </p>
         {waiting.length > 0 ? (
           <ul className="mt-3 flex flex-wrap gap-2">
             {waiting.map((p) => (
               <li key={p.id} className="flex items-center gap-2 rounded-full border border-line bg-paper py-1 pl-1 pr-3 text-sm">
-                <Chip kind={p.pass_paid ? "pass" : "badge"} />
+                <Chip kind="pass" />
                 <span className="font-semibold">{p.name}</span>
                 <span className="text-muted">{p.domain}</span>
               </li>
@@ -260,7 +260,7 @@ function Chip({ kind }: { kind: Seat["kind"] }) {
 function Legend() {
   return (
     <span className="flex gap-2 text-xs text-muted">
-      <Chip kind="pass" /> paid $79
+      <Chip kind="pass" /> paid $29
       <Chip kind="badge" /> badge
       <Chip kind="free" /> voted in
     </span>

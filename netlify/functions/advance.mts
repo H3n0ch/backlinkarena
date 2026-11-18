@@ -4,6 +4,7 @@ import type { Config } from "@netlify/functions";
  * Every 5 minutes: close ended matches, set winners, create the next round,
  * seed the bracket when qualifying ends. All logic lives in the idempotent
  * Postgres function `advance_tournaments()`, so running it twice is safe.
+ * Then it calls /api/cron/emails, which sends due knockout / results emails.
  */
 export default async function advance() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -28,6 +29,22 @@ export default async function advance() {
     return new Response(body, { status: 500 });
   }
   console.log("advance ok", body);
+
+  // Knockout / results emails live in the Next app (lib/tournament-emails.ts), so ask it to send them.
+  const site = (process.env.URL || process.env.PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+  const secret = process.env.CRON_SECRET;
+  if (!site || !secret) {
+    console.warn("advance: CRON_SECRET or site URL not set, tournament emails skipped");
+  } else {
+    const mail = await fetch(`${site}/api/cron/emails`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${secret}` },
+    }).catch((err) => {
+      console.error("advance: emails request failed", err);
+      return null;
+    });
+    if (mail && !mail.ok) console.error("advance: emails returned", mail.status, await mail.text());
+  }
   return new Response(body);
 }
 

@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { getUser } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { runEngine } from "@/lib/tournament-emails";
 import type { ActionResult } from "@/lib/types";
 
 // Admin control room: seats, pause/resume, stop, disqualify. Needs migration 0009.
@@ -97,7 +98,7 @@ export async function removeFromSeat(entryId: string): Promise<ActionResult> {
 }
 
 /**
- * Fills every empty seat. Who gets in follows the ranking (paid pass, badge, most votes);
+ * Fills every empty seat. Who gets in follows the ranking (paid pass by who paid first, badge, most votes);
  * where they sit tries to put brands from the same niche against each other.
  */
 export async function autoFillSeats(tournamentId: string): Promise<ActionResult> {
@@ -105,11 +106,15 @@ export async function autoFillSeats(tournamentId: string): Promise<ActionResult>
   if (!uuid.safeParse(tournamentId).success) return fail("Bad id.");
   const { data: t } = await db.from("tournaments").select("*").eq("id", tournamentId).single();
   if (!t || !SEATABLE.includes(t.status)) return fail("Seats can only be changed before the bracket starts.");
-  const [{ data: rows }, { data: qv }] = await Promise.all([
+  const [{ data: rows }, { data: qv }, { data: paid }] = await Promise.all([
     db.from("entries").select("*").eq("tournament_id", t.id).is("disqualified_at", null),
     db.from("qualifying_votes").select("product_id").eq("tournament_id", t.id),
+    db.from("products").select("id, pass_paid_at").not("pass_paid_at", "is", null),
   ]);
   const entries = (rows ?? []) as EntryRow[];
+  const paidAt = new Map((paid ?? []).map((p) => [p.id as string, p.pass_paid_at as string]));
+  // Paid passes go in payment order; everyone else by when they entered.
+  const at = (e: EntryRow) => (e.entry_path === "pass" ? (paidAt.get(e.product_id) ?? e.created_at) : e.created_at);
   const votes = new Map<string, number>();
   for (const v of qv ?? []) votes.set(v.product_id as string, (votes.get(v.product_id as string) ?? 0) + 1);
   const rank = (e: EntryRow) => (e.entry_path === "pass" ? 0 : e.entry_path === "badge" ? 1 : 2);
@@ -121,7 +126,7 @@ export async function autoFillSeats(tournamentId: string): Promise<ActionResult>
         (rank(a) === 2
           ? (votes.get(b.product_id) ?? 0) + (b.vote_adjust ?? 0) - ((votes.get(a.product_id) ?? 0) + (a.vote_adjust ?? 0))
           : 0) ||
-        a.created_at.localeCompare(b.created_at),
+        at(a).localeCompare(at(b)),
     );
   // Who gets in is decided by rank; where they sit is decided by niche.
   const bySeat = new Map(entries.filter((e) => e.seat).map((e) => [e.seat!, e]));
@@ -306,7 +311,7 @@ export async function disqualifyEntry(entryId: string, reason: string): Promise<
     .update({ ...dq, qualified: false, eliminated_round: round ?? 0 })
     .eq("id", e.id);
   if (error) return fail(error);
-  await db.rpc("advance_tournaments");
+  await runEngine(db);
   return ok(m ? "Disqualified. The opponent goes through." : "Disqualified.");
 }
 

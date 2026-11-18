@@ -1,17 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { Countdown } from "@/components/Countdown";
 import { LogoutButton } from "@/components/LogoutButton";
 import { LeadButton } from "@/components/LeadButton";
 import { ProductLogo } from "@/components/ProductLogo";
-import { MatchCarousel } from "@/components/MatchCarousel";
 import { RallyKit } from "@/components/RallyKit";
 import { ShareButtons } from "@/components/ShareButtons";
 import { requireUser } from "@/lib/auth";
 import { getCurrentOrLastTournament, getProductsByIds, PRODUCT_PUBLIC_COLUMNS } from "@/lib/data";
 import { startPassCheckout } from "@/app/actions/pass";
 import { PUBLIC_SITE_URL, SITE_URL } from "@/lib/env";
-import { hasFixedPrice, OFFER_DAYS, PARTICIPANT_DISCOUNT, participantPrice, SERVICES } from "@/lib/services";
+import {
+  hasFixedPrice,
+  OFFER_DAYS,
+  offerExpiresAt,
+  PARTICIPANT_DISCOUNT,
+  participantPrice,
+  runEndedAt,
+  SERVICES,
+} from "@/lib/services";
 import { PAYMENTS_CONFIGURED } from "@/lib/payments";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { matchPath, matchShareUrl } from "@/lib/share";
@@ -51,6 +59,46 @@ function statusFor(t: Tournament | null, entry: Entry | undefined, productId: st
   return t.status === "bracket" ? { label: "In the bracket", tone: "mint" } : { label: "Played", tone: "muted" };
 }
 
+/** Where the tournament stands overall: phase, and the clock that matters for this phase. */
+function TournamentStrip({ tournament: t, winner }: { tournament: Tournament; winner: string | null }) {
+  const phase =
+    t.status === "draft"
+      ? { label: "Starting soon", tone: "bg-paper" }
+      : t.status === "qualifying"
+        ? { label: "Qualifying", tone: "bg-sun" }
+        : t.status === "bracket"
+          ? { label: "Bracket live", tone: "bg-mint-soft" }
+          : { label: "Finished", tone: "bg-paper" };
+  const paused = Boolean(t.paused_at) && t.status !== "finished";
+  return (
+    <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-line bg-white px-4 py-3 text-sm">
+      <span className="font-display text-base font-extrabold">{t.name}</span>
+      <span className={`rounded-full border border-line px-2.5 py-0.5 text-xs font-bold ${phase.tone}`}>{phase.label}</span>
+      {paused && <span className="rounded-full bg-red-soft px-2.5 py-0.5 text-xs font-bold">Paused</span>}
+      <span className="text-muted">
+        {t.status === "qualifying" &&
+          (t.qualifying_overtime || !t.qualifying_ends_at ? (
+            "The bracket starts once it's full."
+          ) : (
+            <>
+              Qualifying ends in{" "}
+              <span className="font-semibold text-ink">
+                <Countdown to={t.qualifying_ends_at} endedText="a moment" pausedAt={t.paused_at ?? null} />
+              </span>
+            </>
+          ))}
+        {t.status === "bracket" && "Matchups run one round at a time."}
+        {t.status === "finished" && (winner ? `🏆 Won by ${winner}.` : "This tournament is over.")}
+      </span>
+      {(t.status === "bracket" || t.status === "finished") && (
+        <Link href="/arena" className="ml-auto font-semibold underline">
+          See the bracket →
+        </Link>
+      )}
+    </div>
+  );
+}
+
 /**
  * The one decision a site without a seat has to make: pay, or add our badge.
  * `plan` (picked on the pricing card) opens the badge steps or highlights the payment.
@@ -80,12 +128,12 @@ function GetSeat({
           }`}
         >
           <div className="min-w-0 flex-1">
-            <p className="font-bold">Pay $79</p>
+            <p className="font-bold">Pay $29</p>
             <p className="text-sm text-muted">Your seat is secured right away. One-time payment, one tournament.</p>
           </div>
           {PAYMENTS_CONFIGURED ? (
             <form action={startPassCheckout.bind(null, p.id)}>
-              <button className="btn bg-red text-white">Pay $79 →</button>
+              <button className="btn bg-red text-white">Pay $29 →</button>
             </form>
           ) : (
             <span className="text-sm font-semibold text-muted">Coming soon</span>
@@ -129,29 +177,20 @@ function GetSeat({
 
 type Exposure = { views: number; clicks: number; votes: number };
 
-/** Views, votes and clicks this brand collected across its matchups. */
-function ExposureStats({ stats, reached }: { stats: Exposure; reached: string }) {
-  const cells = [
-    { n: stats.views, l: "Matchup views" },
-    { n: stats.votes, l: "Votes received" },
-    { n: stats.clicks, l: "Clicks to your site" },
-  ];
+/** Views, votes and clicks this brand collected across its matchups, as one quiet line. */
+function ExposureLine({ stats }: { stats: Exposure }) {
+  const n = (x: number) => <span className="font-bold text-ink tabular-nums">{x.toLocaleString("en-US")}</span>;
   return (
-    <div className="mt-4 rounded-2xl border border-line bg-paper p-4">
-      <p className="text-xs font-bold uppercase tracking-wider text-muted">Your exposure · {reached}</p>
-      <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-        {cells.map((c) => (
-          <div key={c.l}>
-            <p className="font-display text-2xl font-extrabold tabular-nums">{c.n.toLocaleString("en-US")}</p>
-            <p className="text-xs text-muted">{c.l}</p>
-          </div>
-        ))}
-      </div>
-    </div>
+    <p className="text-sm text-muted">
+      {n(stats.views)} matchup views · {n(stats.votes)} votes · {n(stats.clicks)} clicks to your site
+    </p>
   );
 }
 
 const dayFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+const pctLabel = `${Math.round(PARTICIPANT_DISCOUNT * 100)}% off`;
+/** Offer rows shown before "See all services". */
+const OFFER_PREVIEW = 2;
 
 /** Post-tournament participant offer: services at 30% off for OFFER_DAYS. */
 function ParticipantOffer({
@@ -165,12 +204,46 @@ function ParticipantOffer({
   expires: Date;
   email: string;
 }) {
-  const pct = `${Math.round(PARTICIPANT_DISCOUNT * 100)}% off`;
-  const offer = { productId: product.id, discountLabel: pct };
+  const offer = { productId: product.id, discountLabel: pctLabel };
+  const rows = SERVICES.flatMap((s) =>
+    (s.tiers ?? [{ price: s.price ?? "", title: s.name, detail: s.priceUnit ?? "" }]).map((t) => {
+      const option = s.tiers ? `${s.name} · ${t.title}` : s.name;
+      return (
+        <li key={option} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <span className="min-w-0">
+            <span className="block text-sm font-bold">{s.tiers ? `${s.name}: ${t.title}` : s.name}</span>
+            <span className="block text-xs text-muted">{t.detail}</span>
+          </span>
+          <span className="flex items-center gap-3">
+            {hasFixedPrice(t.price) ? (
+              <span className="text-right">
+                <span className="block text-xs text-muted line-through">{t.price}</span>
+                <span className="block font-display text-xl font-extrabold">{participantPrice(t.price)}</span>
+              </span>
+            ) : (
+              <span className="text-right">
+                <span className="block text-xs text-muted">{t.price}</span>
+                <span className="block font-display text-xl font-extrabold">{pctLabel}</span>
+              </span>
+            )}
+            <LeadButton
+              label="Claim →"
+              service={option}
+              defaultEmail={email}
+              defaultWebsite={product.url}
+              offer={offer}
+              className="btn bg-red px-3! py-1.5! text-sm text-white"
+            />
+          </span>
+        </li>
+      );
+    }),
+  );
+  const list = "flex flex-col divide-y divide-line rounded-xl border border-line bg-white";
   return (
     <div className="border-gradient mt-4 rounded-[0.875rem] p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-xs font-bold uppercase tracking-widest text-red-dark">Participant offer · {pct}</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-red-dark">Participant offer · {pctLabel}</p>
         <span className="rounded-full bg-sun/40 px-2.5 py-0.5 text-xs font-bold">Valid until {dayFmt.format(expires)}</span>
       </div>
       <p className="mt-1 font-display text-xl font-extrabold leading-tight">
@@ -179,44 +252,18 @@ function ParticipantOffer({
           : "Turn your arena run into lasting SEO."}
       </p>
       <p className="mt-1 text-sm text-muted">
-        You played and shared your matchups, so you get our services at {pct} for {OFFER_DAYS} days.
+        You played and shared your matchups, so you get our services at {pctLabel} for {OFFER_DAYS} days.
       </p>
-      <ul className="mt-4 flex flex-col divide-y divide-line rounded-xl border border-line bg-white">
-        {SERVICES.flatMap((s) =>
-          (s.tiers ?? [{ price: s.price ?? "", title: s.name, detail: s.priceUnit ?? "" }]).map((t) => {
-            const option = s.tiers ? `${s.name} · ${t.title}` : s.name;
-            return (
-              <li key={option} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                <span className="min-w-0">
-                  <span className="block text-sm font-bold">{s.tiers ? `${s.name}: ${t.title}` : s.name}</span>
-                  <span className="block text-xs text-muted">{t.detail}</span>
-                </span>
-                <span className="flex items-center gap-3">
-                  {hasFixedPrice(t.price) ? (
-                    <span className="text-right">
-                      <span className="block text-xs text-muted line-through">{t.price}</span>
-                      <span className="block font-display text-xl font-extrabold">{participantPrice(t.price)}</span>
-                    </span>
-                  ) : (
-                    <span className="text-right">
-                      <span className="block text-xs text-muted">{t.price}</span>
-                      <span className="block font-display text-xl font-extrabold">{pct}</span>
-                    </span>
-                  )}
-                  <LeadButton
-                    label="Claim →"
-                    service={option}
-                    defaultEmail={email}
-                    defaultWebsite={product.url}
-                    offer={offer}
-                    className="btn bg-red px-3! py-1.5! text-sm text-white"
-                  />
-                </span>
-              </li>
-            );
-          }),
-        )}
-      </ul>
+      <ul className={`mt-4 ${list}`}>{rows.slice(0, OFFER_PREVIEW)}</ul>
+      {rows.length > OFFER_PREVIEW && (
+        <details className="group mt-2">
+          <summary className="cursor-pointer list-none text-center text-sm font-semibold underline [&::-webkit-details-marker]:hidden">
+            <span className="group-open:hidden">See all {rows.length} services ▾</span>
+            <span className="hidden group-open:inline">Show fewer ▴</span>
+          </summary>
+          <ul className={`mt-2 ${list}`}>{rows.slice(OFFER_PREVIEW)}</ul>
+        </details>
+      )}
     </div>
   );
 }
@@ -240,6 +287,33 @@ const TONE: Record<Status["tone"], string> = {
   blue: "bg-blue-soft",
   muted: "bg-paper",
 };
+
+/** True once `d` is in the past (request time; the page is dynamic). */
+function hasPassed(d: Date): boolean {
+  return d.getTime() < Date.now();
+}
+
+/** The single thing a site card leads with, in priority order. */
+type Step = "live" | "enter" | "seat" | "offer" | "idle";
+
+function nextStep(s: { live: boolean; canEnter: boolean; entered: boolean; needsSeat: boolean; hasOffer: boolean }): Step {
+  if (s.live) return "live";
+  if (!s.entered && s.canEnter) return "enter";
+  if (s.needsSeat) return "seat";
+  if (s.hasOffer) return "offer";
+  return "idle";
+}
+
+/** What an idle card says: nothing to do, and why. */
+function idleText(t: Tournament | null, entry: Entry | undefined, autoEntered: boolean): string {
+  if (!t || t.status === "finished" || !entry || entry.eliminated_round != null || entry.disqualified_at) {
+    return autoEntered
+      ? "Nothing to do right now. You'll be entered automatically when the next tournament opens."
+      : "Nothing to do right now. We'll email you when the next tournament opens.";
+  }
+  if (t.status === "bracket") return "You're through. We'll email you when your next matchup opens.";
+  return "You're seeded and skip qualifying. We'll email you when the bracket starts.";
+}
 
 async function Dashboard({
   searchParams,
@@ -283,9 +357,9 @@ async function Dashboard({
     entries = (e.data ?? []) as Entry[];
     matches = (m.data ?? []) as Match[];
   }
-  // Opponents' slugs for readable matchup links (/vs/a-vs-b).
+  // Opponents' slugs for readable matchup links (/vs/a-vs-b), plus the winner's name for the strip.
   const [matchProducts, { data: countRows }] = await Promise.all([
-    getProductsByIds(matches.flatMap((m) => [m.product_a, m.product_b])),
+    getProductsByIds([...matches.flatMap((m) => [m.product_a, m.product_b]), tournament?.winner_product_id ?? null]),
     matches.some((m) => m.status === "open") && tournament
       ? supabase.rpc("tournament_match_counts", { p_tournament_id: tournament.id })
       : Promise.resolve({ data: [] }),
@@ -311,18 +385,48 @@ async function Dashboard({
     }
   }
   /** When a site's run in this tournament ended (knocked out, didn't qualify, or tournament over). */
-  function runEndedAt(entry: Entry | undefined, productId: string): Date | null {
+  function siteRunEndedAt(entry: Entry | undefined, productId: string): Date | null {
     if (!tournament || !entry) return null;
-    const out = entry.eliminated_round !== null && entry.eliminated_round !== undefined;
-    if (!out && tournament.status !== "finished") return null;
     const last = matches.find((m) => m.product_a === productId || m.product_b === productId);
-    const at = last?.ends_at ?? tournament.qualifying_ends_at ?? null;
-    return at ? new Date(at) : new Date();
+    return runEndedAt({
+      eliminatedRound: entry.eliminated_round,
+      tournamentFinished: tournament.status === "finished",
+      lastMatchEndsAt: last?.ends_at,
+      qualifyingEndsAt: tournament.qualifying_ends_at,
+    });
   }
 
+  // Everything a card needs, worked out up front so the JSX stays flat. Live matchups first.
+  const sites = products
+    .map((p) => {
+      const entry = entries.find((e) => e.product_id === p.id);
+      const current = matches.find((m) => m.product_a === p.id || m.product_b === p.id);
+      const live = Boolean(tournament && current?.status === "open");
+      const seated = p.pass_paid || p.badge_status === "verified";
+      const needsSeat = !seated && (!entry || entry.entry_path === "free") && !live;
+      const ended = siteRunEndedAt(entry, p.id);
+      const expires = ended ? offerExpiresAt(ended) : null;
+      const offerExpires = expires && !hasPassed(expires) ? expires : null;
+      return {
+        p,
+        entry,
+        current,
+        live,
+        seated,
+        needsSeat,
+        offerExpires,
+        stats: exposure.get(p.id),
+        status: statusFor(tournament, entry, p.id),
+        shareLink: current ? matchShareUrl(pathOf(current), p.slug) : `${SITE_URL}/arena?ref=${p.slug}`,
+        step: nextStep({ live, canEnter, entered: Boolean(entry), needsSeat, hasOffer: Boolean(offerExpires) }),
+      };
+    })
+    .sort((a, b) => Number(b.live) - Number(a.live));
+
+  const winner = tournament?.winner_product_id ? (matchProducts.get(tournament.winner_product_id)?.name ?? null) : null;
+
   return (
-    // Wide layout only when there are several sites to show side by side.
-    <div className={products.length > 1 ? "" : "mx-auto max-w-3xl"}>
+    <div className="mx-auto max-w-3xl">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-4xl font-extrabold">Your corner</h1>
@@ -330,6 +434,8 @@ async function Dashboard({
         </div>
         <LogoutButton />
       </div>
+
+      {tournament && <TournamentStrip tournament={tournament} winner={winner} />}
 
       {pass && PASS_NOTICE[pass] && (
         <p className={`mt-4 rounded-2xl border border-line p-3 font-semibold ${PASS_NOTICE[pass].tone}`}>
@@ -351,7 +457,7 @@ async function Dashboard({
           {plan && (
             <p className="mt-1 text-sm text-muted">
               First add your website, then we&apos;ll get your guaranteed spot
-              {plan === "pass" ? " ($79)" : " (with our badge)"}.
+              {plan === "pass" ? " ($29)" : " (with our badge)"}.
             </p>
           )}
           <Link href={plan ? `/join?plan=${plan}` : "/join"} className="btn mt-4 bg-red text-white">
@@ -360,128 +466,131 @@ async function Dashboard({
         </div>
       ) : (
         <div className="mt-6 flex flex-col gap-6">
-          <MatchCarousel
-            itemLabel="Website"
-            slideClassName={products.length > 1 ? "w-[92%] md:w-[calc(50%-0.5rem)]" : "w-full"}
-          >
-            {products.map((p) => {
-              const entry = entries.find((e) => e.product_id === p.id);
-              const status = statusFor(tournament, entry, p.id);
-              const current = matches.find(
-                (m) => m.product_a === p.id || m.product_b === p.id,
-              );
-              const shareLink = current
-                ? matchShareUrl(pathOf(current), p.slug)
-                : `${SITE_URL}/arena?ref=${p.slug}`;
-              return (
-                <section key={p.id} className="card flex h-full flex-col p-5">
-                  <div className="flex items-center gap-4">
-                    <ProductLogo src={p.logo_url} name={p.name} size={56} />
-                    <div className="min-w-0 flex-1">
-                      <Link href={`/p/${p.slug}`} className="font-display text-xl font-extrabold hover:underline">
-                        {p.name}
-                      </Link>
-                      <p className="truncate text-sm text-muted">{p.domain}</p>
-                    </div>
-                    <span className={`shrink-0 rounded-full border border-line px-3 py-1 text-sm font-bold ${TONE[status.tone]}`}>
+          {sites.map(({ p, entry, current, live, seated, needsSeat, offerExpires, stats, status, shareLink, step }) => {
+            const offer = offerExpires && (
+              <ParticipantOffer
+                product={p}
+                stats={stats ?? { views: 0, clicks: 0, votes: 0 }}
+                expires={offerExpires}
+                email={user.email ?? ""}
+              />
+            );
+            const getSeat = (
+              <GetSeat
+                product={p}
+                plan={plan}
+                when={canEnter ? "this tournament" : "the next tournament"}
+                note={
+                  !entry && tournament && !canEnter && tournament.status !== "finished"
+                    ? `${tournament.name} has already started.`
+                    : null
+                }
+              />
+            );
+            return (
+              <section key={p.id} className="card p-5">
+                {/* Who, and where they stand */}
+                <div className="flex items-center gap-4">
+                  <ProductLogo src={p.logo_url} name={p.name} size={56} />
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/p/${p.slug}`} className="font-display text-xl font-extrabold hover:underline">
+                      {p.name}
+                    </Link>
+                    <p className="truncate text-sm text-muted">{p.domain}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <span className={`rounded-full border border-line px-3 py-1 text-sm font-bold ${TONE[status.tone]}`}>
                       {status.label}
                     </span>
-                  </div>
-
-                  {tournament && (
-                    <p className="mt-3 text-sm text-muted">
-                      Tournament: <span className="font-semibold text-ink">{tournament.name}</span>
-                    </p>
-                  )}
-
-                  {!entry && canEnter && (
-                    <div className="mt-4">
-                      <EnterButton productId={p.id} />
-                    </div>
-                  )}
-
-                  {entry && exposure.has(p.id) && (
-                    <ExposureStats stats={exposure.get(p.id)!} reached={status.label} />
-                  )}
-
-                  {(() => {
-                    const ended = runEndedAt(entry, p.id);
-                    if (!ended) return null;
-                    const expires = new Date(ended.getTime() + OFFER_DAYS * 86400_000);
-                    if (expires.getTime() < Date.now()) return null;
-                    return (
-                      <ParticipantOffer
-                        product={p}
-                        stats={exposure.get(p.id) ?? { views: 0, clicks: 0, votes: 0 }}
-                        expires={expires}
-                        email={user.email ?? ""}
-                      />
-                    );
-                  })()}
-
-                  {current?.status === "open" && tournament ? (
-                    (() => {
-                      const mine = current.product_a === p.id ? "a" : "b";
-                      const rivalId = mine === "a" ? current.product_b : current.product_a;
-                      const c = countsOf.get(current.id);
-                      return (
-                        <RallyKit
-                          mySide={mine}
-                          me={p.name}
-                          rival={(rivalId && matchProducts.get(rivalId)?.name) || "a bye"}
-                          myLogo={p.logo_url}
-                          rivalLogo={(rivalId && matchProducts.get(rivalId)?.logo_url) || null}
-                          round={roundName(current.round, tournament.bracket_size)}
-                          link={shareLink}
-                          endsAt={current.ends_at}
-                          myVotes={c ? (mine === "a" ? c.a_votes : c.b_votes) : 0}
-                          rivalVotes={c ? (mine === "a" ? c.b_votes : c.a_votes) : 0}
-                          imageUrl={`${pathOf(current)}/opengraph-image`}
-                          pausedAt={tournament.paused_at}
-                        />
-                      );
-                    })()
-                  ) : (
-                    entry && <div className="mt-5">
-                      <ShareButtons link={shareLink} title={current ? "Share your last matchup" : "Share your entry"} />
-                    </div>
-                  )}
-
-                  {p.pass_paid || p.badge_status === "verified" ? (
-                    <p className="mt-4 rounded-2xl border border-line bg-mint-soft p-3 text-sm font-semibold">
-                      ✓ Your seat is secured ({p.pass_paid ? "paid" : "badge verified"}).{" "}
-                      {canEnter && entry
-                        ? "You skip qualifying in this tournament."
-                        : "You'll be entered automatically when the next tournament opens."}
-                      {!p.pass_paid && " Keep the badge on your site."}
-                    </p>
-                  ) : (
-                    (!entry || entry.entry_path === "free") &&
-                    current?.status !== "open" && (
-                      <GetSeat
-                        product={p}
-                        plan={plan}
-                        when={canEnter ? "this tournament" : "the next tournament"}
-                        note={
-                          !entry && tournament && !canEnter && tournament.status !== "finished"
-                            ? `${tournament.name} has already started.`
-                            : null
+                    {seated && (
+                      <span
+                        className="rounded-full bg-mint-soft px-2.5 py-0.5 text-xs font-bold"
+                        title={
+                          p.pass_paid
+                            ? "Paid: you skip qualifying."
+                            : "Badge verified: you skip qualifying. Keep the badge on your site."
                         }
-                      />
-                    )
-                  )}
+                      >
+                        ✓ Seat secured · {p.pass_paid ? "paid" : "badge"}
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-                  {current && (
-                    <div className="mt-auto pt-5">
-                      <Link href={`${pathOf(current)}?ref=${p.slug}`} className="btn w-full bg-red text-white">
-                        {current.status === "open" ? "Go to your matchup →" : "See your last matchup →"}
+                {/* The one thing to do now */}
+                {step === "live" && current && tournament && (() => {
+                  const mine = current.product_a === p.id ? "a" : "b";
+                  const rivalId = mine === "a" ? current.product_b : current.product_a;
+                  const c = countsOf.get(current.id);
+                  return (
+                    <>
+                      <RallyKit
+                        mySide={mine}
+                        me={p.name}
+                        rival={(rivalId && matchProducts.get(rivalId)?.name) || "a bye"}
+                        myLogo={p.logo_url}
+                        rivalLogo={(rivalId && matchProducts.get(rivalId)?.logo_url) || null}
+                        round={roundName(current.round, tournament.bracket_size)}
+                        link={shareLink}
+                        endsAt={current.ends_at}
+                        myVotes={c ? (mine === "a" ? c.a_votes : c.b_votes) : 0}
+                        rivalVotes={c ? (mine === "a" ? c.b_votes : c.a_votes) : 0}
+                        imageUrl={`${pathOf(current)}/opengraph-image`}
+                        pausedAt={tournament.paused_at}
+                      />
+                      <Link href={`${pathOf(current)}?ref=${p.slug}`} className="btn mt-3 w-full bg-red text-white">
+                        Go to your matchup →
                       </Link>
-                    </div>
-                  )}
-                </section>
-              );
-            })}
-          </MatchCarousel>
+                    </>
+                  );
+                })()}
+
+                {step === "enter" && (
+                  <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-paper p-4">
+                    <p className="min-w-0 flex-1 text-sm">
+                      <span className="block font-bold">{tournament?.name} is open.</span>
+                      <span className="text-muted">Enter for free and collect votes in qualifying, or get a seat below to skip it.</span>
+                    </p>
+                    <EnterButton productId={p.id} />
+                  </div>
+                )}
+
+                {(step === "seat" || (step === "enter" && needsSeat)) && getSeat}
+
+                {step === "offer" && offer}
+
+                {step === "idle" && <p className="mt-4 rounded-xl border border-line bg-paper p-4 text-sm">{idleText(tournament, entry, p.pass_paid)}</p>}
+
+                {/* Secondary: stats, share, history, offer teaser */}
+                {((entry && stats) || (entry && !live) || (current && !live) || (offerExpires && step !== "offer")) && (
+                  <div className="mt-5 flex flex-col gap-3 border-t border-line pt-4">
+                    {entry && stats && <ExposureLine stats={stats} />}
+                    {entry && !live && (
+                      <ShareButtons link={shareLink} title={current ? "Share your last matchup" : "Share your entry"} />
+                    )}
+                    {current && !live && (
+                      <Link href={`${pathOf(current)}?ref=${p.slug}`} className="text-sm font-semibold underline">
+                        See your last matchup →
+                      </Link>
+                    )}
+                    {offerExpires && step !== "offer" && (
+                      <details className="group">
+                        <summary className="cursor-pointer list-none text-sm [&::-webkit-details-marker]:hidden">
+                          <span className="font-bold text-red-dark">Participant offer:</span> our services at {pctLabel} until{" "}
+                          {dayFmt.format(offerExpires)} ·{" "}
+                          <span className="font-semibold underline">
+                            <span className="group-open:hidden">View ▾</span>
+                            <span className="hidden group-open:inline">Hide ▴</span>
+                          </span>
+                        </summary>
+                        {offer}
+                      </details>
+                    )}
+                  </div>
+                )}
+              </section>
+            );
+          })}
           <Link href="/join" className="text-center text-sm font-semibold underline">
             + Add another website
           </Link>

@@ -2,11 +2,12 @@
 
 import { useRef, useState, useTransition } from "react";
 import { submitLead } from "@/app/actions/lead";
-import { SERVICE_OPTIONS } from "@/lib/services";
+import { CONTACT_TOPICS, SERVICE_OPTIONS } from "@/lib/services";
 
 /**
  * "Talk to us" button that opens a short enquiry form and saves it as a lead.
  * `offer` = participant offer (30% off), tied to one of the visitor's own sites.
+ * `contact` = the footer "Contact" form: same modal, general topics, message required.
  */
 export function LeadButton({
   label,
@@ -15,6 +16,7 @@ export function LeadButton({
   defaultEmail = "",
   defaultWebsite = "",
   offer,
+  contact = false,
 }: {
   label: string;
   className?: string;
@@ -23,10 +25,12 @@ export function LeadButton({
   defaultEmail?: string;
   defaultWebsite?: string;
   offer?: { productId: string; discountLabel: string };
+  contact?: boolean;
 }) {
+  const options = contact ? CONTACT_TOPICS : SERVICE_OPTIONS;
   const dialog = useRef<HTMLDialogElement>(null);
   const [form, setForm] = useState({
-    service: service ?? SERVICE_OPTIONS[0],
+    service: service ?? options[0],
     name: "",
     email: defaultEmail,
     website: defaultWebsite,
@@ -51,7 +55,7 @@ export function LeadButton({
     start(async () => {
       const r = await submitLead({
         ...form,
-        source: offer ? "participant_offer" : "services",
+        source: contact ? "contact" : offer ? "participant_offer" : "services",
         productId: offer?.productId,
       });
       if (r.ok) setSent(true);
@@ -73,11 +77,15 @@ export function LeadButton({
         <div className="p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-display text-2xl font-extrabold">{sent ? "Thanks, we'll be in touch!" : "Talk to us"}</p>
+              <p className="font-display text-2xl font-extrabold">
+                {sent ? "Thanks, we'll be in touch!" : contact ? "Contact us" : "Talk to us"}
+              </p>
               <p className="mt-1 text-sm text-muted">
                 {sent
                   ? "We usually reply within one business day."
-                  : offer
+                  : contact
+                    ? "A question about the arena, your entry or a payment? Write us, we reply within one business day."
+                    : offer
                     ? `Your participant price (${offer.discountLabel}) is saved with this request.`
                     : "Tell us about your site. We'll reply with a plan and the exact price."}
               </p>
@@ -99,9 +107,9 @@ export function LeadButton({
           ) : (
             <form onSubmit={submit} className="mt-5 flex flex-col gap-3 text-left">
               <label className="flex flex-col gap-1 text-sm font-semibold">
-                What are you interested in?
+                {contact ? "What's it about?" : "What are you interested in?"}
                 <select className={field} value={form.service} onChange={set("service")}>
-                  {SERVICE_OPTIONS.map((o) => (
+                  {options.map((o) => (
                     <option key={o}>{o}</option>
                   ))}
                 </select>
@@ -127,10 +135,11 @@ export function LeadButton({
                 />
               </label>
               <label className="flex flex-col gap-1 text-sm font-semibold">
-                Anything we should know?
+                {contact ? "Message *" : "Anything we should know?"}
                 <textarea
-                  className={`${field} min-h-20`}
-                  placeholder="Your niche, goals, target pages…"
+                  className={`${field} ${contact ? "min-h-28" : "min-h-20"}`}
+                  placeholder={contact ? "How can we help?" : "Your niche, goals, target pages…"}
+                  required={contact}
                   value={form.message}
                   onChange={set("message")}
                   maxLength={2000}
@@ -146,7 +155,7 @@ export function LeadButton({
                 onChange={set("company")}
               />
               <button className="btn bg-red text-white" disabled={pending}>
-                {pending ? "Sending…" : "Send request"}
+                {pending ? "Sending…" : contact ? "Send message" : "Send request"}
               </button>
               {error && <p className="text-sm font-semibold text-red">{error}</p>}
             </form>

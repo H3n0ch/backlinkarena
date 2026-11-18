@@ -21,7 +21,7 @@ const INTRO = {
   },
   pass: {
     title: "Get your guaranteed spot",
-    text: "Add your website first. Then pay $79 once and you skip qualifying in one tournament.",
+    text: "Add your website first. Then pay $29 once and you skip qualifying in one tournament.",
   },
 } as const;
 

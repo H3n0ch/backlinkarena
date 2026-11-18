@@ -22,7 +22,7 @@ const SECTIONS: Section[] = [
     title: "Entering",
     rules: [
       "Anyone can enter a website for free. It gets its own brand page in the arena right away, with a link to your site.",
-      "There are three ways in: free entry (you qualify with votes), adding our badge (free, skips qualifying) or the $79 guaranteed spot (skips qualifying).",
+      "There are three ways in: free entry (you qualify with votes), adding our badge (free, skips qualifying) or the $29 guaranteed spot (skips qualifying).",
       "Badge and paid entries never add votes to a matchup. They only decide who gets into the bracket.",
       "You can only enter websites you own or run.",
     ],
@@ -91,9 +91,9 @@ const SECTIONS: Section[] = [
   },
   {
     id: "pass",
-    title: "Guaranteed spot ($79)",
+    title: "Guaranteed spot ($29)",
     rules: [
-      "The $79 guaranteed spot skips qualifying for one tournament.",
+      "The $29 guaranteed spot skips qualifying for one tournament.",
       "It's used up once your brand gets a seat in a bracket. If you pay while no tournament is open, it applies to the next one.",
     ],
   },
@@ -104,7 +104,8 @@ const SECTIONS: Section[] = [
       "The champion gets a backlink on a real DA 50+ website in their niche. We choose the site with you and place the link by hand.",
       "Every placed link is listed on the Winners page.",
       "Every other brand keeps the visitors and attention their matchups brought in, and sees its numbers in the dashboard.",
-      "When your run ends, you get 30% off our backlink placement service for 7 days. You'll find the offer in your dashboard.",
+      "When your run ends, you get 30% off our backlink placement service for 7 days. We email it to you when your run ends, and you'll find it in your dashboard.",
+      "When the final is decided, we email every brand in the tournament the result.",
     ],
   },
   {

@@ -27,7 +27,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
 async function Intro({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const next = String((await searchParams).next ?? "");
   const text = next.includes("plan=pass")
-    ? "Last step before payment: log in so your $79 guaranteed spot is linked to your website."
+    ? "Last step before payment: log in so your $29 guaranteed spot is linked to your website."
     : next.includes("plan=badge")
       ? "Last step: log in so we can link your badge to your website."
       : next.startsWith("/join")

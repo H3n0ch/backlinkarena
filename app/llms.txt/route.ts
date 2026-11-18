@@ -17,7 +17,7 @@ export function GET() {
 ## How the tournament works
 
 - Entering and voting are free. Voting in a matchup needs no account; each visitor gets one vote per matchup.
-- Qualifying: free entries collect votes on a public leaderboard. Brands can skip qualifying by adding the Backlink Arena badge to their site (free) or paying $79 for a guaranteed spot in one tournament. Neither adds votes inside a match.
+- Qualifying: free entries collect votes on a public leaderboard. Brands can skip qualifying by adding the Backlink Arena badge to their site (free) or paying $29 for a guaranteed spot in one tournament. Neither adds votes inside a match.
 - Bracket: 8 or 16 brands play 1v1 knockout rounds. Each matchup runs for a set time (usually 24 hours); the brand with more votes advances. Direct competitors are never paired.
 - Prize: the champion gets a backlink on a real DA 50+ site in their niche. Everyone who plays gets ${Math.round(PARTICIPANT_DISCOUNT * 100)}% off our backlink services for ${OFFER_DAYS} days.
 

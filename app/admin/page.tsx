@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import {
   markPassPaid,
+  recheckBadge,
   rejectBadge,
   runEngineNow,
   startBracketNow,
@@ -31,6 +32,7 @@ import { AdminNav } from "./AdminNav";
 import { nicheKey } from "@/lib/niche";
 import { DqButton, PathChip, Seat, type SeatBrand } from "./ControlRoom";
 import { InlineVotes } from "./CrmForms";
+import { PagedList } from "./PagedList";
 
 export const metadata: Metadata = { title: "Admin", robots: { index: false } };
 
@@ -47,11 +49,14 @@ export default function AdminPage() {
 const small = "btn bg-card text-xs py-1! px-3!";
 const dateFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
-/** Paid pass first, then badge, then free by votes, then earliest signup. */
-function rankEntries<T extends { path: SeatBrand["path"]; votes: number; created: string }>(rows: T[]): T[] {
+/** Paid pass first (who paid first), then badge, then free by votes, then earliest signup. */
+function rankEntries<T extends { path: SeatBrand["path"]; votes: number; created: string; paidAt: string | null }>(
+  rows: T[],
+): T[] {
   const r = (p: SeatBrand["path"]) => (p === "pass" ? 0 : p === "badge" ? 1 : 2);
+  const at = (x: T) => (x.path === "pass" ? (x.paidAt ?? x.created) : x.created);
   return [...rows].sort(
-    (a, b) => r(a.path) - r(b.path) || (r(a.path) === 2 ? b.votes - a.votes : 0) || a.created.localeCompare(b.created),
+    (a, b) => r(a.path) - r(b.path) || (r(a.path) === 2 ? b.votes - a.votes : 0) || at(a).localeCompare(at(b)),
   );
 }
 
@@ -112,7 +117,7 @@ async function Admin() {
   const preBracket = active && (active.status === "draft" || active.status === "qualifying");
   const live = entries.filter((e) => !e.disqualified_at);
   const disqualified = entries.filter((e) => e.disqualified_at);
-  const toBrand = (e: Entry): SeatBrand & { created: string; productId: string } => {
+  const toBrand = (e: Entry): SeatBrand & { created: string; productId: string; paidAt: string | null } => {
     const p = byId.get(e.product_id);
     return {
       entryId: e.id,
@@ -124,17 +129,34 @@ async function Admin() {
       votes: qVotes(e),
       category: p?.category ?? null,
       created: e.created_at,
+      paidAt: p?.pass_paid_at ?? null,
     };
   };
   const seated = new Map(live.filter((e) => e.seat).map((e) => [e.seat!, toBrand(e)]));
   const waiting = rankEntries(live.filter((e) => !e.seat).map(toBrand));
-  const notEntered = products.filter((p) => !entryOf.has(p.id));
+  // Paid first (who paid first), then badge, then newest sign-ups first.
+  const guaranteedFirst = (p: Product) => (p.pass_paid ? 0 : p.badge_status === "verified" ? 1 : 2);
+  const notEntered = products
+    .filter((p) => !entryOf.has(p.id))
+    .sort(
+      (a, b) =>
+        guaranteedFirst(a) - guaranteedFirst(b) ||
+        (a.pass_paid && b.pass_paid ? (a.pass_paid_at ?? "").localeCompare(b.pass_paid_at ?? "") : 0) ||
+        b.created_at.localeCompare(a.created_at),
+    );
+  // "New" = signed up after the most recent tournament was created.
+  const newSince = ts[0]?.created_at ?? null;
+  const newCount = notEntered.filter((p) => !newSince || p.created_at > newSince).length;
   const size = active?.bracket_size ?? 16;
   const placed = seated.size;
   const canStart = preBracket && live.length >= size;
   const round = matches.length ? Math.max(...matches.map((m) => m.round)) : 0;
   const current = matches.filter((m) => m.round === round);
-  const pendingBadges = products.filter((p) => p.badge_status === "pending").length;
+  // Manual badge checks, oldest request first.
+  const badgeQueue = products
+    .filter((p) => p.badge_status === "pending")
+    .sort((a, b) => (a.badge_requested_at ?? a.created_at).localeCompare(b.badge_requested_at ?? b.created_at));
+  const pendingBadges = badgeQueue.length;
 
   return (
     <div className="flex flex-col gap-8">
@@ -156,8 +178,8 @@ async function Admin() {
             <strong>Signed up, not entered</strong>.
           </li>
           <li>
-            Paying $79 or a verified badge turns it into <PathChip path="pass" /> or <PathChip path="badge" />. Those move
-            to the top of the waiting list. With no open tournament, they join the next one automatically.
+            Paying $29 or a verified badge turns it into <PathChip path="pass" /> or <PathChip path="badge" />. Those move
+            to the top of the waiting list. With no open tournament, paid passes join the next one automatically; badge brands enter themselves and skip qualifying when they do.
           </li>
           <li>
             You place brands into the {size} seats one by one (or click <strong>Auto-fill</strong>: paid → badge → most
@@ -261,7 +283,7 @@ async function Admin() {
           <>
             <h2 className="font-display text-2xl font-extrabold">No tournament running</h2>
             <p className="mt-1 text-sm text-muted">
-              Create one. Everyone with a paid pass or verified badge is entered automatically.
+              Create one. Everyone with an unused paid pass is entered automatically. Badge brands enter themselves.
             </p>
             <div className="mt-4">
               <CreateTournamentForm />
@@ -373,18 +395,82 @@ async function Admin() {
         </section>
       )}
 
+      {/* Badge checks */}
+      {badgeQueue.length > 0 && (
+        <section id="badge-checks" className="card scroll-mt-24 border-sun! p-5">
+          <h2 className="font-display text-2xl font-extrabold">
+            Badge checks <span className="text-base text-muted">({badgeQueue.length})</span>
+          </h2>
+          <p className="text-sm text-muted">
+            These owners say our badge is on their site, but the automatic check didn&apos;t find it. Open their page and
+            look for a followed link to Backlink Arena (it may only show after the page loads). <strong>Approve</strong>{" "}
+            makes them a badge entry (seated right after paid brands). <strong>Reject</strong> keeps them free and emails
+            them what to fix.
+          </p>
+          <ul className="mt-3 divide-y divide-line/40">
+            {badgeQueue.map((p) => {
+              const page = p.badge_page ?? p.url;
+              const e = entryOf.get(p.id);
+              return (
+                <li key={p.id} className="flex flex-wrap items-center gap-3 py-3">
+                  <ProductLogo src={p.logo_url} name={p.name} size={28} />
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/admin/products/${p.id}`} className="block truncate text-sm font-semibold hover:underline">
+                      {p.name}
+                    </Link>
+                    <p className="truncate text-xs text-muted">
+                      {emails.get(p.owner_id) ?? "?"} · asked{" "}
+                      {dateFmt.format(new Date(p.badge_requested_at ?? p.created_at))}
+                      {e && !e.disqualified_at ? ` · in ${active?.name ?? "tournament"} as ${e.entry_path}` : ""}
+                    </p>
+                  </div>
+                  <a
+                    href={page}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn bg-card px-3! py-1! text-xs underline"
+                    title={page}
+                  >
+                    Open their page ↗
+                  </a>
+                  <ActionButton action={recheckBadge.bind(null, p.id)} label="Check again" className={small} />
+                  <ActionButton
+                    action={verifyBadge.bind(null, p.id)}
+                    label="Approve"
+                    className="btn border-mint! bg-mint-soft text-mint px-3! py-1! text-xs font-semibold"
+                  />
+                  <ActionButton
+                    action={rejectBadge.bind(null, p.id)}
+                    label="Reject"
+                    confirm={`Reject the badge for ${p.domain}? They stay a free entry and get an email to fix it.`}
+                    className="btn bg-red-soft px-3! py-1! text-xs"
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {/* Waiting list */}
       {active && preBracket && (
         <section className="card p-5">
           <h2 className="font-display text-2xl font-extrabold">
             Waiting list <span className="text-base text-muted">({waiting.length})</span>
           </h2>
-          <p className="text-sm text-muted">Signed up for this tournament but not seated yet. Paid and badge brands are on top.</p>
+          <p className="text-sm text-muted">Signed up for this tournament but not seated yet. Paid brands are on top (who paid first gets in first), then badge brands.</p>
           {waiting.length === 0 ? (
             <p className="mt-4 text-sm text-muted">Nobody waiting.</p>
           ) : (
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[760px] text-left text-sm">
+            <PagedList
+              layout="table"
+              empty="Nobody in this group."
+              tabs={[
+                { tag: "pass", label: "Paid" },
+                { tag: "badge", label: "Badge" },
+                { tag: "free", label: "Free" },
+              ]}
+              head={
                 <thead>
                   <tr className="border-b border-line">
                     <th className="py-2 pr-3">#</th>
@@ -396,12 +482,17 @@ async function Admin() {
                     <th className="py-2" />
                   </tr>
                 </thead>
-                <tbody>
-                  {waiting.map((w, i) => {
+              }
+              items={waiting.map((w, i) => {
                     const p = byId.get(w.productId);
                     const e = entryOf.get(w.productId)!;
-                    return (
-                      <tr key={w.entryId} className="border-b border-line/40 align-middle">
+                    const owner = p ? (emails.get(p.owner_id) ?? "") : "";
+                    return {
+                      key: w.entryId,
+                      text: `${w.name} ${w.domain} ${owner}`.toLowerCase(),
+                      tags: [w.path],
+                      node: (
+                      <tr className="border-b border-line/40 align-middle">
                         <td className="py-2 pr-3 font-mono text-muted">{i + 1}</td>
                         <td className="py-2 pr-3">
                           <div className="flex items-center gap-2">
@@ -419,6 +510,11 @@ async function Admin() {
                         <td className="py-2 pr-3 text-xs">{p ? (emails.get(p.owner_id) ?? "?") : "?"}</td>
                         <td className="py-2 pr-3">
                           <PathChip path={w.path} />
+                          {w.path === "free" && p?.badge_status === "pending" && (
+                            <a href="#badge-checks" className="ml-1 rounded-full bg-sun px-2 py-0.5 text-[10px] font-extrabold uppercase">
+                              Badge to check
+                            </a>
+                          )}
                         </td>
                         <td className="py-2 pr-3">
                           {w.path === "free" ? (
@@ -437,23 +533,29 @@ async function Admin() {
                         <td className="py-2">
                           <div className="flex flex-wrap gap-1">
                             <ActionButton action={placeInNextSeat.bind(null, w.entryId)} label="Seat →" className="btn bg-ink px-3! py-1! text-xs text-white" />
+                            {w.path === "free" && p?.badge_status === "pending" && (
+                              <ActionButton
+                                action={verifyBadge.bind(null, w.productId)}
+                                label="Approve badge"
+                                className="btn border-mint! bg-mint-soft text-mint px-3! py-1! text-xs font-semibold"
+                              />
+                            )}
                             {w.path === "free" && (
                               <ActionButton
                                 action={markPassPaid.bind(null, w.productId)}
                                 label="Mark paid"
-                                confirm={`Mark ${w.name} as paid ($79 pass)? Use this for payments made outside the payment provider.`}
-                                className={small}
+                                confirm={`Mark ${w.name} as paid ($29 pass)? Use this for payments made outside the payment provider.`}
+                                className="btn border-mint! bg-mint-soft text-mint px-3! py-1! text-xs font-semibold"
                               />
                             )}
                             <DqButton entryId={w.entryId} name={w.name} />
                           </div>
                         </td>
                       </tr>
-                    );
+                      ),
+                    };
                   })}
-                </tbody>
-              </table>
-            </div>
+            />
           )}
         </section>
       )}
@@ -478,27 +580,45 @@ async function Admin() {
               ? preBracket
                 ? `These sites aren't in ${active.name} yet. Add them one by one or all at once.`
                 : `These sites aren't in ${active.name}. The bracket has started, so they can join the next tournament.`
-              : "No tournament is open. Paid and badge brands join the next one automatically."}
+              : "No tournament is open. Paid passes join the next one automatically; badge brands enter themselves."}
           </p>
-          <ul className="mt-4 flex flex-col divide-y divide-line/40">
-            {notEntered.map((p) => (
-              <li key={p.id} className="flex flex-wrap items-center gap-3 py-2">
-                <ProductLogo src={p.logo_url} name={p.name} size={28} />
-                <div className="min-w-0 flex-1">
-                  <Link href={`/admin/products/${p.id}`} className="block truncate text-sm font-semibold hover:underline">
-                    {p.name}
-                  </Link>
-                  <p className="truncate text-xs text-muted">
-                    {p.domain} · {emails.get(p.owner_id) ?? "?"}
-                  </p>
-                </div>
-                {p.pass_paid ? <PathChip path="pass" /> : p.badge_status === "verified" ? <PathChip path="badge" /> : null}
-                {active && preBracket && (
-                  <ActionButton action={addToTournament.bind(null, p.id, active.id)} label={`Add to ${active.name}`} className={small} />
-                )}
-              </li>
-            ))}
-          </ul>
+          <PagedList
+            defaultTab={newCount > 0 ? "new" : "all"}
+            empty="Nobody in this group."
+            tabs={[
+              { tag: "new", label: newSince ? `New since ${dateFmt.format(new Date(newSince))}` : "New" },
+              { tag: "old", label: "Older" },
+              { tag: "guaranteed", label: "Paid & badge" },
+            ]}
+            items={notEntered.map((p) => {
+              const owner = emails.get(p.owner_id) ?? "";
+              const guaranteed = p.pass_paid || p.badge_status === "verified";
+              const isNew = !newSince || p.created_at > newSince;
+              return {
+                key: p.id,
+                text: `${p.name} ${p.domain} ${owner}`.toLowerCase(),
+                tags: [isNew ? "new" : "old", ...(guaranteed ? ["guaranteed"] : [])],
+                node: (
+                  <li className="flex flex-wrap items-center gap-3 py-2">
+                    <ProductLogo src={p.logo_url} name={p.name} size={28} />
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/admin/products/${p.id}`} className="block truncate text-sm font-semibold hover:underline">
+                        {p.name}
+                      </Link>
+                      <p className="truncate text-xs text-muted">
+                        {p.domain} · {owner || "?"} · {dateFmt.format(new Date(p.created_at))}
+                      </p>
+                    </div>
+                    {isNew && <span className="rounded-full bg-sun px-2 py-0.5 text-[10px] font-extrabold uppercase">New</span>}
+                    {p.pass_paid ? <PathChip path="pass" /> : p.badge_status === "verified" ? <PathChip path="badge" /> : null}
+                    {active && preBracket && (
+                      <ActionButton action={addToTournament.bind(null, p.id, active.id)} label={`Add to ${active.name}`} className={small} />
+                    )}
+                  </li>
+                ),
+              };
+            })}
+          />
         </section>
       )}
 

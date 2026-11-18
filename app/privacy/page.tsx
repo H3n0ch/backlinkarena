@@ -55,7 +55,7 @@ const SECTIONS: Section[] = [
     points: [
       "To run the tournaments: show entries, count votes, seed the bracket, publish winners and place prize backlinks.",
       "To keep voting fair: detect duplicate and automated votes.",
-      "To send emails you need: sign-in links, confirmation when your brand enters the arena, and replies to your requests. Payment receipts come from our payment provider.",
+      "To send emails you need: sign-in links, confirmation when your brand enters the arena, your tournament results (when your brand is knocked out, with your stats and participant offer, and when the final is decided), and replies to your requests. Payment receipts come from our payment provider.",
       "To answer quote requests and support questions.",
       "To understand how the site is used (only if analytics is on, see below) and improve it.",
       "We do not sell your data and do not use it for advertising.",

@@ -1,7 +1,7 @@
 import "server-only";
 import DodoPayments from "dodopayments";
 
-/** True once the API key and the $79 product (created in the Dodo dashboard) are set. */
+/** True once the API key and the $29 product (created in the Dodo dashboard) are set. */
 export const DODO_CONFIGURED = Boolean(process.env.DODO_PAYMENTS_API_KEY && process.env.DODO_PASS_PRODUCT_ID);
 
 let client: DodoPayments | null = null;

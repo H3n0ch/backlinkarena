@@ -14,6 +14,12 @@ export type Product = {
   category: string | null;
   badge_status: BadgeStatus;
   pass_paid: boolean;
+  /** When the current pass was paid; paid passes get seats in this order. */
+  pass_paid_at?: string | null;
+  /** Page the owner gave for the badge check (migration 0017). */
+  badge_page?: string | null;
+  /** When the badge went to "pending" (manual check queue). */
+  badge_requested_at?: string | null;
   created_at: string;
 };
 

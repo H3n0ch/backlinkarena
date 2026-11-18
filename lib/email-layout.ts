@@ -15,7 +15,11 @@ const FAINT = "#78716c";
 const GOLD = "#fbbf24";
 const ORANGE = "#f97316";
 const TEAL = "#14b8a6";
-const DISPLAY = "'Archivo Black','Archivo','Arial Black',Arial,Helvetica,sans-serif";
+/** Always the live site: emails are opened outside the app, and Supabase templates are static. */
+const SITE = "https://backlinkarena.com";
+/** Logo for dark backgrounds, as PNG (many mail apps don't show SVG). 1592×256, shown at 200×32. */
+const LOGO_URL = `${SITE}/badge/backlink-arena-logo-v6-dark.png`;
+const DISPLAY ="'Archivo Black','Archivo','Arial Black',Arial,Helvetica,sans-serif";
 const BODY = "Arial,Helvetica,sans-serif";
 
 /** Escapes text for HTML. Use on every value that didn't come from us. */
@@ -133,7 +137,7 @@ export function layout(o: { title: string; preheader: string; body: string; foot
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px">
   <tr><td style="padding:0 6px 18px">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td style="font:900 italic 20px/1 ${DISPLAY};letter-spacing:.5px;color:#fafaf9">BACKLINK <span style="color:${GOLD}">ARENA</span></td>
+      <td style="font:900 italic 20px/1 ${DISPLAY};letter-spacing:.5px;color:#fafaf9"><a href="${SITE}" target="_blank" style="text-decoration:none;color:#fafaf9"><img src="${LOGO_URL}" width="200" height="32" alt="Backlink Arena" style="display:block;width:200px;height:auto;max-width:100%;border:0;outline:none;text-decoration:none;font:900 italic 20px/32px ${DISPLAY};color:${GOLD}"></a></td>
       <td align="right"><span style="display:inline-block;padding:6px 12px;border:1px solid #57391b;border-radius:999px;font:700 10px/1 ${BODY};letter-spacing:2px;color:#fcd34d">1V1 &middot; DA 50+</span></td>
     </tr></table>
   </td></tr>

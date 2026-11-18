@@ -12,7 +12,7 @@ export function matchShareUrl(path: string, refSlug?: string | null) {
 }
 
 export function defaultPostText(link: string) {
-  return `I'm in a 1v1 battle on Backlink Arena. One click helps me win: ${link} #contest`;
+  return `I'm competing on Backlink Arena 🥊 It's a 1v1 battle and the votes decide who wins. One click, no sign-up, and it helps me win: ${link} #contest`;
 }
 
 export function shareLinks(link: string, customText?: string) {

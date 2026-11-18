@@ -1,10 +1,16 @@
 "use server";
 
+import { after } from "next/server";
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { getUser } from "@/lib/auth";
+import { checkPageForBadge } from "@/lib/badge-check";
+import { sendEmail } from "@/lib/email";
+import { badgeRejectedEmail, badgeVerifiedEmail } from "@/lib/email-templates";
 import { skipQualifying } from "@/lib/entries";
+import { PUBLIC_SITE_URL } from "@/lib/env";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { runEngine } from "@/lib/tournament-emails";
 import type { ActionResult } from "@/lib/types";
 import { safeHttpUrl } from "@/lib/url";
 
@@ -67,7 +73,7 @@ async function loadTimed(db: Db, id: string) {
 }
 
 async function engineThenDone(db: Db, message: string): Promise<ActionResult> {
-  await db.rpc("advance_tournaments");
+  await runEngine(db);
   return done(message);
 }
 
@@ -159,7 +165,7 @@ export async function startBracketNow(id: string): Promise<ActionResult> {
   const db = await admin();
   // The engine seeds from qualifying, so move a draft forward first.
   await db.from("tournaments").update({ status: "qualifying" }).eq("id", id).eq("status", "draft");
-  const { data, error } = await db.rpc("advance_tournaments", { p_force_bracket: id });
+  const { data, error } = await runEngine(db, { p_force_bracket: id });
   if (error) return { ok: false, error: error.message };
   const row = (data as { tournament: string; seeded: boolean | null }[]).find((r) => r.tournament === id);
   if (row?.seeded === false) {
@@ -172,27 +178,94 @@ export async function startBracketNow(id: string): Promise<ActionResult> {
 
 export async function runEngineNow(): Promise<ActionResult> {
   const db = await admin();
-  const { data, error } = await db.rpc("advance_tournaments");
+  const { data, error } = await runEngine(db);
   return error ? { ok: false, error: error.message } : done(`Engine ran: ${JSON.stringify(data)}`);
 }
 
-export async function verifyBadge(productId: string): Promise<ActionResult> {
-  const db = await admin();
-  const { error } = await db.from("products").update({ badge_status: "verified" }).eq("id", productId);
-  if (error) return { ok: false, error: error.message };
-  await skipQualifying(db, productId, "badge");
-  return done("Badge verified.");
+type Admin = ReturnType<typeof createSupabaseAdmin>;
+
+/** The product plus its owner's email, for badge emails. */
+async function badgeProduct(db: Admin, productId: string) {
+  const { data: p } = await db
+    .from("products")
+    .select("id, name, url, badge_status, badge_page, owner_id")
+    .eq("id", productId)
+    .maybeSingle();
+  if (!p) return null;
+  const { data: owner } = await db.from("profiles").select("email").eq("id", p.owner_id).maybeSingle();
+  return { ...p, page: (p.badge_page as string | null) ?? (p.url as string), email: (owner?.email as string | null) ?? null };
 }
 
+/** Marks the badge verified, upgrades an open free entry, and tells the owner (once). */
+async function approveBadge(db: Admin, productId: string): Promise<ActionResult> {
+  const p = await badgeProduct(db, productId);
+  if (!p) return { ok: false, error: "Product not found." };
+  const { error } = await db
+    .from("products")
+    .update({ badge_status: "verified", badge_requested_at: null })
+    .eq("id", productId);
+  if (error) return { ok: false, error: error.message };
+  const tournament = await skipQualifying(db, productId, "badge");
+  if (p.email && p.badge_status !== "verified") {
+    const to = p.email;
+    after(() => sendEmail(to, badgeVerifiedEmail({ name: p.name as string, tournament, siteUrl: PUBLIC_SITE_URL })));
+  }
+  return done(`Badge verified${tournament ? `. ${p.name} is now a badge entry in ${tournament}` : ""}.`);
+}
+
+export async function verifyBadge(productId: string): Promise<ActionResult> {
+  return approveBadge(await admin(), productId);
+}
+
+/** Runs the automatic check again on the page the owner gave. Verifies if the link is there. */
+export async function recheckBadge(productId: string): Promise<ActionResult> {
+  const db = await admin();
+  const p = await badgeProduct(db, productId);
+  if (!p) return { ok: false, error: "Product not found." };
+  const r = await checkPageForBadge(p.page);
+  if (r.found && r.dofollow) return approveBadge(db, productId);
+  if (r.found) return { ok: false, error: "Link found, but it's nofollow / sponsored / ugc. Reject, or approve if you accept it." };
+  if (!r.reachable) return { ok: false, error: "Couldn't load the page from the server. Open it and check by hand." };
+  return {
+    ok: false,
+    error: "No link in the page HTML. If the site loads with JavaScript, open it and check by hand.",
+  };
+}
+
+/** Badge not there: back to "none", entry stays free, owner is told what to fix. */
 export async function rejectBadge(productId: string): Promise<ActionResult> {
   const db = await admin();
-  const { error } = await db.from("products").update({ badge_status: "none" }).eq("id", productId);
-  return error ? { ok: false, error: error.message } : done("Badge reset.");
+  const p = await badgeProduct(db, productId);
+  if (!p) return { ok: false, error: "Product not found." };
+  const { error } = await db
+    .from("products")
+    .update({ badge_status: "none", badge_requested_at: null })
+    .eq("id", productId);
+  if (error) return { ok: false, error: error.message };
+  // A badge entry in the open tournament goes back to free qualifying.
+  const { data: t } = await db.from("tournaments").select("id").in("status", ["draft", "qualifying"]).maybeSingle();
+  if (t) {
+    await db
+      .from("entries")
+      .update({ entry_path: "free" })
+      .eq("tournament_id", t.id)
+      .eq("product_id", productId)
+      .eq("entry_path", "badge");
+  }
+  if (p.email && p.badge_status === "pending") {
+    const to = p.email;
+    after(() => sendEmail(to, badgeRejectedEmail({ name: p.name as string, page: p.page, siteUrl: PUBLIC_SITE_URL })));
+  }
+  return done(p.badge_status === "pending" ? "Badge rejected. The owner was emailed." : "Badge reset.");
 }
 
 export async function markPassPaid(productId: string): Promise<ActionResult> {
   const db = await admin();
-  const { error } = await db.from("products").update({ pass_paid: true }).eq("id", productId);
+  const { error } = await db
+    .from("products")
+    .update({ pass_paid: true, pass_paid_at: new Date().toISOString() })
+    .eq("id", productId)
+    .eq("pass_paid", false);
   if (error) return { ok: false, error: error.message };
   await skipQualifying(db, productId, "pass");
   return done("Pass marked as paid.");

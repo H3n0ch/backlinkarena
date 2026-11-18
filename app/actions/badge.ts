@@ -1,11 +1,13 @@
 "use server";
 
+import { after } from "next/server";
 import { refresh } from "next/cache";
 import { getUser } from "@/lib/auth";
-import { arenaHosts, findBacklink } from "@/lib/badge";
+import { checkPageForBadge } from "@/lib/badge-check";
+import { sendEmail } from "@/lib/email";
+import { badgeCheckAdminEmail } from "@/lib/email-templates";
 import { skipQualifying } from "@/lib/entries";
-import { PUBLIC_SITE_URL, SITE_URL } from "@/lib/env";
-import { fetchHtml } from "@/lib/metadata";
+import { CONTACT_EMAIL, PUBLIC_SITE_URL } from "@/lib/env";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import type { ActionResult } from "@/lib/types";
 
@@ -27,7 +29,7 @@ export async function checkBadge(productId: string, pageInput?: string): Promise
   const db = createSupabaseAdmin();
   const { data: product } = await db
     .from("products")
-    .select("id, owner_id, url, domain, badge_status")
+    .select("id, owner_id, url, domain, name, badge_status")
     .eq("id", productId)
     .maybeSingle();
   if (!product || product.owner_id !== user.id) return { ok: false, error: "Product not found." };
@@ -52,23 +54,19 @@ export async function checkBadge(productId: string, pageInput?: string): Promise
     }
   }
 
-  let result = { found: false, dofollow: false };
-  try {
-    const { html, finalUrl } = await fetchHtml(page, 3_000_000);
-    if (html) result = findBacklink(html, finalUrl, [...new Set([...arenaHosts(SITE_URL), ...arenaHosts(PUBLIC_SITE_URL)])]);
-  } catch {
-    // Unreachable page: fall through to manual check.
-  }
+  // Remember the page, so the admin checks the same one by hand.
+  await db.from("products").update({ badge_page: page }).eq("id", product.id);
+  const result = await checkPageForBadge(page);
 
   if (result.found && result.dofollow) {
-    await db.from("products").update({ badge_status: "verified" }).eq("id", product.id);
+    await db.from("products").update({ badge_status: "verified", badge_requested_at: null }).eq("id", product.id);
     const t = await skipQualifying(db, product.id, "badge");
     refresh();
     return {
       ok: true,
       message: t
         ? `✅ Badge found! You skip qualifying and go straight into the bracket of ${t}.`
-        : "✅ Badge found and verified! You'll skip qualifying in the next tournament.",
+        : "✅ Badge found and verified! When you enter the next tournament, you skip qualifying.",
     };
   }
 
@@ -81,12 +79,19 @@ export async function checkBadge(productId: string, pageInput?: string): Promise
 
   // Not found automatically: queue it for a manual check by the admin.
   if (product.badge_status === "none") {
-    await db.from("products").update({ badge_status: "pending" }).eq("id", product.id);
+    await db
+      .from("products")
+      .update({ badge_status: "pending", badge_requested_at: new Date().toISOString() })
+      .eq("id", product.id);
+    const admin = process.env.ADMIN_EMAIL || CONTACT_EMAIL;
+    const owner = user.email ?? "";
+    const info = { name: product.name as string, domain: product.domain as string, page, owner, siteUrl: PUBLIC_SITE_URL };
+    if (admin) after(() => sendEmail(admin, badgeCheckAdminEmail(info), { replyTo: owner || undefined }));
   }
   refresh();
   return {
     ok: true,
     message:
-      "We couldn't find the badge on that page automatically. If you just added it, check the page address and try again. Otherwise we'll check it by hand soon.",
+      "We couldn't find the badge on that page automatically. If you just added it, check the page address and try again. Otherwise we'll check it by hand and email you.",
   };
 }

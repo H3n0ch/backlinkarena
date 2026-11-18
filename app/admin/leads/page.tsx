@@ -24,7 +24,7 @@ export default function AdminLeadsPage() {
 type Lead = {
   id: string;
   created_at: string;
-  source: "services" | "participant_offer";
+  source: "services" | "participant_offer" | "contact";
   service: string;
   tier: string | null;
   name: string | null;
@@ -157,6 +157,11 @@ async function Leads() {
                     <td className="py-2 pr-3">
                       {l.service}
                       {l.tier && <span className="block text-xs text-muted">{l.tier}</span>}
+                      {l.source === "contact" && (
+                        <span className="mt-1 inline-block rounded-full bg-blue-soft px-2 py-0.5 text-[10px] font-bold uppercase">
+                          Contact form
+                        </span>
+                      )}
                       {l.source === "participant_offer" && (
                         <span className="mt-1 inline-block rounded-full bg-sun/40 px-2 py-0.5 text-[10px] font-bold uppercase">
                           Participant · {Math.round(Number(l.discount) * 100)}% off

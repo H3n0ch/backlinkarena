@@ -38,9 +38,9 @@ function standing(me: number, rival: number, rivalName: string) {
 function messages(p: { me: string; rival: string; round: string; link: string; status: string }) {
   const { me, rival, round, link, status } = p;
   return {
-    x: `🥊 ${me} vs ${rival}: ${round} on Backlink Arena. ${status} One click, no sign-up: ${link}`,
+    x: `I'm competing on Backlink Arena 🥊 ${me} vs ${rival} in the ${round}. ${status} One click, no sign-up: ${link}`,
     linkedin: `We entered ${me} into Backlink Arena, a 1v1 tournament where founders battle for a DA 50+ backlink.\n\nWe're in the ${round} against ${rival}. ${status}\n\nIf you'd like to back us, it takes one click (no account needed):\n${link}\n\nThank you! 🙏`,
-    friends: `Hey! Quick favor 🙏 ${me} is in a 1v1 battle on Backlink Arena (${round}) vs ${rival}. ${status} Could you vote for us? One click, no sign-up: ${link}`,
+    friends: `Hey! Quick favor 🙏 I'm competing on Backlink Arena: ${me} vs ${rival} in the ${round}. ${status} Could you vote for us? One click, no sign-up: ${link}`,
     newsletter: `P.S. We're battling ${rival} in the ${round} of Backlink Arena. ${status} If you have 5 seconds, one click helps us win: ${link}`,
     community: `Small ask: my project ${me} made the ${round} of Backlink Arena (founders battle 1v1 for a backlink). Up against ${rival}. If you want to help an indie founder, it's one click, no sign-up: ${link}`,
   } satisfies Record<Channel, string>;

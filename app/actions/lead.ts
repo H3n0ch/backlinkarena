@@ -7,14 +7,15 @@ import { sendEmail } from "@/lib/email";
 import { leadAdminEmail, leadConfirmEmail } from "@/lib/email-templates";
 import { CONTACT_EMAIL, PUBLIC_SITE_URL } from "@/lib/env";
 import { clientIpHash } from "@/lib/guest";
-import { PARTICIPANT_DISCOUNT, SERVICE_OPTIONS } from "@/lib/services";
+import { CONTACT_TOPICS, PARTICIPANT_DISCOUNT, SERVICE_OPTIONS } from "@/lib/services";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import type { ActionResult } from "@/lib/types";
 import { normalizeUrl } from "@/lib/url";
 
-const LeadInput = z.object({
-  source: z.enum(["services", "participant_offer"]),
-  service: z.string().refine((s) => SERVICE_OPTIONS.includes(s), "Pick a service."),
+const LeadInput = z
+  .object({
+  source: z.enum(["services", "participant_offer", "contact"]),
+  service: z.string(),
   name: z.string().trim().max(120).optional().default(""),
   email: z.string().trim().email("Please enter a valid email.").max(200),
   website: z.string().trim().max(300).optional().default(""),
@@ -22,9 +23,17 @@ const LeadInput = z.object({
   productId: z.guid().optional(),
   // Honeypot: real people never fill this hidden field.
   company: z.string().max(0).optional().default(""),
-});
+  })
+  .refine((d) => (d.source === "contact" ? CONTACT_TOPICS : SERVICE_OPTIONS).includes(d.service), {
+    message: "Pick a topic.",
+    path: ["service"],
+  })
+  .refine((d) => d.source !== "contact" || d.message.length > 0, {
+    message: "Please write a message.",
+    path: ["message"],
+  });
 
-/** "Talk to us" / participant offer form → leads table (admin → Leads). */
+/** "Talk to us" / participant offer / footer contact form → leads table (admin → Leads). */
 export async function submitLead(input: z.input<typeof LeadInput>): Promise<ActionResult> {
   const parsed = LeadInput.safeParse(input);
   if (!parsed.success) {
@@ -63,7 +72,7 @@ export async function submitLead(input: z.input<typeof LeadInput>): Promise<Acti
     }
   }
 
-  const [service, tier] = d.service.split(" · ");
+  const [service, tier] = d.source === "contact" ? [d.service] : d.service.split(" · ");
   const { error } = await db.from("leads").insert({
     source: d.source,
     service,
@@ -80,7 +89,7 @@ export async function submitLead(input: z.input<typeof LeadInput>): Promise<Acti
   if (error) return { ok: false, error: "Couldn't send your request. Please try again." };
 
   // Emails go out after the response, so a slow or missing mail service never blocks the form.
-  after(() => notifyLead({ ...d, service, tier: tier ?? null, website, discount }));
+  after(() => notifyLead({ ...d, service, tier: tier ?? null, website, discount, contact: d.source === "contact" }));
   return { ok: true };
 }
 
@@ -92,6 +101,7 @@ async function notifyLead(l: {
   website: string;
   message: string;
   discount: number;
+  contact: boolean;
 }) {
   const info = { ...l, what: l.tier ? `${l.service} · ${l.tier}` : l.service };
   const admin = process.env.ADMIN_EMAIL || CONTACT_EMAIL;

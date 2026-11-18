@@ -13,10 +13,17 @@ The business side: losing brands get a time-limited discount on our paid backlin
 | Phase | What happens |
 |---|---|
 | **Draft** | The admin creates the tournament (name, bracket of 8 or 16, match length, qualifying end). |
-| **Qualifying** | Brands enter. **Free** entries collect votes on a public leaderboard. **Badge** entries (our badge verified on their site) and **Pass** entries ($79 guaranteed spot via Dodo Payments) skip qualifying. |
+| **Qualifying** | Brands enter. **Free** entries collect votes on a public leaderboard. **Badge** entries (our badge verified on their site) and **Pass** entries ($29 guaranteed spot via Dodo Payments) skip qualifying. |
 | **Bracket** | When qualifying ends with a full field, the bracket locks: seats placed by the admin stay, empty seats fill with pass/badge first, then the most-voted free entries. Round 1 pairs seat 1 v 2, 3 v 4… If the field isn't full, qualifying extends 24h at a time. |
 | **Matches** | Each match runs for a set time (default 24h). Visitors vote once per matchup; the brand with more votes advances. Winners meet winners. |
 | **Finished** | The champion's backlink is placed by hand and listed on `/winners`. Everyone else gets 30% off our services for 7 days, plus their exposure stats. |
+
+**Emails are automatic** ([`lib/tournament-emails.ts`](lib/tournament-emails.ts)): when a brand's run ends (it loses a match or misses the bracket), its owner gets their stats and the 30% offer with its expiry date. When the final closes, the champion gets a "you won" email and everyone else gets the result. Each email is sent once (`entries.knockout_emailed_at`, `tournaments.results_emailed_at`, migration 0013).
+
+While a tournament runs, brands are nudged to rally (rules in [`lib/nudges.ts`](lib/nudges.ts), sent once each via the `email_log` table, migration 0014):
+- **Qualifying ends soon**: about 24h before the bracket locks, every free entry gets its rank, votes and how many votes it needs (or leads by).
+- **Your match is live**: when a match opens. Round 1 means "you made the bracket", later rounds mean "you won, next match is live". Includes the share link with the brand's `?ref=`.
+- **You're behind**: once per match, in the last 6 hours (or last half of short matches) if the brand is trailing.
 
 Brands are never paired with a direct competitor.
 
@@ -24,7 +31,7 @@ Brands are never paired with a direct competitor.
 
 **For brands**
 - **Join flow** (`/join`): paste a URL, we pull the name, description and logo, then save after login.
-- **Dashboard** (`/dashboard`): status per site, exposure stats (views, clicks, votes), badge code, $79 checkout, and a **Rally kit** with ready-to-post texts per channel, one-click share buttons and a downloadable matchup image. Several sites show side by side in a carousel.
+- **Dashboard** (`/dashboard`): status per site, exposure stats (views, clicks, votes), badge code, $29 checkout, and a **Rally kit** with ready-to-post texts per channel, one-click share buttons and a downloadable matchup image. Several sites show side by side in a carousel.
 - **Public pages**: brand page `/p/[slug]`, matchup pages `/match/[id]` and `/vs/[a]-vs-[b]`, each with a generated share image (`opengraph-image`).
 - **Login**: magic link (works on any device) and Google.
 
@@ -43,7 +50,7 @@ Brands are never paired with a direct competitor.
 - **Next.js 16** (App Router, Cache Components, Server Actions, `proxy.ts`), **React 19**, **Tailwind CSS 4**
 - **Supabase**: Postgres, Auth, Row Level Security. The tournament logic lives in the database.
 - **Netlify**: hosting, plus a scheduled function that runs the engine every 5 minutes
-- **Dodo Payments** for the $79 pass (Stripe kept wired up for later, `PAYMENT_PROVIDER`), **Resend** for email, **zod** for validation, **vitest** for tests
+- **Dodo Payments** for the $29 pass (Stripe kept wired up for later, `PAYMENT_PROVIDER`), **Resend** for email, **zod** for validation, **vitest** for tests
 
 ## Project structure
 
@@ -62,7 +69,7 @@ lib/                  Data access, auth, env, URLs, payments (Dodo, Stripe), ema
 netlify/functions/    advance.mts: scheduled engine run every 5 minutes
 scripts/              build-email-templates.mts (generates the Supabase templates)
 supabase/
-  migrations/         0001–0010, run in order
+  migrations/         0001–0014, run in order
   templates/          Generated Supabase auth email templates
   tests/              integrity.sql
 ```
@@ -81,7 +88,7 @@ supabase/
 ### 1. Supabase
 
 1. Create a project at supabase.com.
-2. In the SQL Editor, run every file in [`supabase/migrations/`](supabase/migrations/) **in order** (0001 → 0010). They are safe to re-run.
+2. In the SQL Editor, run every file in [`supabase/migrations/`](supabase/migrations/) **in order** (0001 → 0014). They are safe to re-run.
 3. Optional: run [`supabase/tests/integrity.sql`](supabase/tests/integrity.sql). It rolls back, and the last row should read `ALL CHECKS PASSED`.
 4. **Authentication → Sign In / Providers**
    - **Email**: on.
@@ -129,10 +136,11 @@ See [`.env.local.example`](.env.local.example) for details.
 | `ADMIN_PASSWORD` | Second factor for `/admin` |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | Contact links; fallback for admin notifications |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google sign-in (same client as in Supabase) |
-| `PAYMENT_PROVIDER` | `dodo` (default) or `stripe`: which provider sells the $79 guaranteed spot |
+| `PAYMENT_PROVIDER` | `dodo` (default) or `stripe`: which provider sells the $29 guaranteed spot |
 | `DODO_PAYMENTS_API_KEY`, `DODO_PAYMENTS_ENVIRONMENT`, `DODO_PASS_PRODUCT_ID`, `DODO_PAYMENTS_WEBHOOK_KEY` | Dodo Payments (active). Without the key and product id the buy button shows "Coming soon" |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PASS_PRICE_ID` | Stripe, kept for later (`PAYMENT_PROVIDER=stripe`) |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `ADMIN_EMAIL` | App emails. Without the key emails are skipped and nothing breaks |
+| `CRON_SECRET` | Long random string. The scheduled job uses it to call `/api/cron/emails` (knockout and results emails) |
 | `PUBLIC_SITE_URL` | Optional: address inside badge codes (defaults to the Netlify URL) |
 
 ## Running a tournament (admin checklist)
@@ -141,7 +149,7 @@ See [`.env.local.example`](.env.local.example) for details.
 2. During qualifying: **verify badges**, **mark passes paid** (for manual payments), add signed-up brands to the tournament, and place seats in the control room. Avoid pairing direct competitors.
 3. The bracket **starts automatically** when qualifying ends with a full field, or use **Start bracket now**.
 4. During the bracket: matches close and advance on their own. Use pause, disqualify or vote adjustments only when needed.
-5. **After the final:** place the winner's backlink, paste its URL under "Finished tournaments", and follow up on leads from the participant offer.
+5. **After the final:** the knockout and results emails go out on their own. Place the winner's backlink, paste its URL under "Finished tournaments", follow up on leads from the participant offer, and create the next tournament.
 
 ### Legal pages
 

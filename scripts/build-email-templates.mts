@@ -5,10 +5,14 @@
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import {
+  behindEmail,
   confirmSignupEmail,
+  knockoutEmail,
   leadAdminEmail,
   leadConfirmEmail,
   magicLinkEmail,
+  matchLiveEmail,
+  qualifyingEndingEmail,
   welcomeEmail,
   type Rendered,
 } from "../lib/email-templates";
@@ -36,6 +40,10 @@ if (i > 0) {
     "3-welcome": welcomeEmail({ name: "TinyInvest", slug: "tinyhouse-investments", entered: true, siteUrl: site }),
     "4-lead-admin": leadAdminEmail(lead, site),
     "5-lead-confirm": leadConfirmEmail(lead),
+    "6-qualifying-ending": qualifyingEndingEmail({ name: "TinyInvest", tournament: "November Cup", rank: 14, openSpots: 12, inside: false, margin: 3, votes: 21, timeLeft: "23 hours", pageUrl: `${site}/p/tinyinvest?ref=tinyinvest`, siteUrl: site }),
+    "7-match-live": matchLiveEmail({ name: "TinyInvest", opponent: "PennyPath", tournament: "November Cup", roundName: "Quarterfinals", firstRound: false, final: false, timeLeft: "24 hours", shareUrl: `${site}/vs/tinyinvest-vs-pennypath?ref=tinyinvest`, siteUrl: site }),
+    "8-behind": behindEmail({ name: "TinyInvest", opponent: "PennyPath", roundName: "Quarterfinals", mine: 31, theirs: 45, timeLeft: "6 hours", shareUrl: `${site}/vs/tinyinvest-vs-pennypath?ref=tinyinvest`, siteUrl: site }),
+    "9-knockout": knockoutEmail({ name: "TinyInvest", tournament: "November Cup", reached: "Quarterfinals", round: 2, final: false, stats: { views: 412, clicks: 57, votes: 63 }, expires: new Date("2026-11-27"), discount: 0.3, siteUrl: site }),
   };
   for (const [k, e] of Object.entries(all)) writeFileSync(`${dir}/${k}.html`, e.html);
   console.log("previews in", dir);

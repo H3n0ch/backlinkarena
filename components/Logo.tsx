@@ -1,21 +1,19 @@
+/** The square app icon (v6): chain links with a spark. */
 export function LogoMark({ size = 30 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <rect x="1" y="1" width="30" height="30" rx="8" fill="#1c1917" />
-      <path d="M8 22 L14 10 L16 15" stroke="#f97316" strokeWidth="3.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M24 10 L18 22 L16 17" stroke="#2dd4bf" strokeWidth="3.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="16" cy="16" r="2.2" fill="#fbbf24" />
-    </svg>
+    <img src="/badge/backlink-arena-icon-v6.svg" alt="" width={size} height={size} aria-hidden="true" />
   );
 }
 
-export function Wordmark() {
+/** Full logo (icon + wordmark, v6). The parent link carries the accessible name. */
+export function Wordmark({ height = 32 }: { height?: number }) {
   return (
-    <span className="flex items-center gap-2 font-display text-lg font-extrabold tracking-tight">
-      <LogoMark />
-      <span>
-        Backlink<span className="text-gradient">Arena</span>
-      </span>
-    </span>
+    <img
+      src="/badge/backlink-arena-logo-v6.svg"
+      alt="Backlink Arena"
+      width={Math.round((height * 398) / 64)}
+      height={height}
+      className="block h-6 w-auto sm:h-8"
+    />
   );
 }

@@ -49,7 +49,7 @@ export async function AnnouncementBar() {
           </p>
         )}
         <Link href="/#pricing" className="hidden font-bold text-red hover:underline sm:inline">
-          Skip qualifying: $79 →
+          Free to enter · or skip qualifying: $29 →
         </Link>
       </div>
     </div>

@@ -92,8 +92,8 @@ function Hero() {
         Battle for <span className="text-gradient animate-shimmer">free backlinks.</span>
       </h1>
       <p className="mx-auto mt-5 max-w-xl text-base sm:text-lg">
-        Win a free <strong>DA 50+ backlink</strong> in your niche. Every brand shares its matchup to win votes, so your
-        site reaches <strong>audiences beyond your own</strong>.
+        Battle other brands for a <strong>DA 50+ link worth $500</strong> in your niche. Both sides share every matchup, so even
+        if you lose, <strong>new audiences see you</strong>. No outreach, no pitching.
       </p>
 
       <div className="relative mx-auto mt-7 max-w-lg">
@@ -181,6 +181,8 @@ function Hero() {
   );
 }
 
+const SOCIAL_PROOF_MIN_SITES = 100;
+
 async function SocialProof() {
   const [stats, recent] = await Promise.all([getArenaStats(), getRecentProducts(6)]);
   return (
@@ -195,7 +197,8 @@ async function SocialProof() {
         </div>
       )}
       <p className="text-sm text-muted">
-        {stats.sites > 0 ? (
+        {/* Small numbers make the arena look empty, so only show them once they impress. */}
+        {stats.sites >= SOCIAL_PROOF_MIN_SITES ? (
           <>
             Join <strong className="text-ink">{stats.sites.toLocaleString("en-US")}</strong> founders ·{" "}
             <strong className="text-ink">{stats.votes.toLocaleString("en-US")}</strong> votes cast
@@ -366,10 +369,10 @@ function Pricing() {
               href="/join?plan=pass"
               className="group flex flex-col rounded-xl bg-[image:var(--grad-brand)] p-3 shadow-[0_10px_24px_-10px_rgb(234_88_12/0.8)] transition hover:brightness-110"
             >
-              <span className="font-display text-2xl font-extrabold">$79</span>
+              <span className="font-display text-2xl font-extrabold">$29</span>
               <span className="text-xs text-white/85">No badge, one tournament</span>
               <span className="mt-2 text-sm font-bold">
-                Pay $79 <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+                Pay $29 <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
               </span>
             </Link>
           </div>
@@ -384,7 +387,7 @@ function Pricing() {
 const FAQ = [
   {
     q: "Is it really free?",
-    a: "Yes. Entering with your website and voting are free. Want to skip qualifying? Add our badge to your site for free, or pay $79 for a guaranteed spot in one tournament.",
+    a: "Yes. Entering with your website and voting are free. Want to skip qualifying? Add our badge to your site for free, or pay $29 for a guaranteed spot in one tournament.",
   },
   {
     q: "How does a tournament work?",
@@ -400,7 +403,7 @@ const FAQ = [
   },
   {
     q: "Can I buy votes?",
-    a: "No. Paying $79 or adding our badge only gets you into the bracket. It never adds votes to a matchup. Every visitor gets one vote per matchup, no sign-up needed, and you can't vote in a matchup you're part of.",
+    a: "No. Think of it like priority boarding: you get on faster, but everyone flies on the same plane. Paying $29 or adding our badge only skips qualifying and gets you into the bracket. It never adds votes to a matchup. Every visitor gets one vote per matchup, no sign-up needed, and you can't vote in a matchup you're part of.",
   },
   {
     q: "How does the qualifying round work?",

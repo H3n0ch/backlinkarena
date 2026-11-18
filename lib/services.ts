@@ -76,6 +76,28 @@ export const SERVICES: Service[] = [
 export const PARTICIPANT_DISCOUNT = 0.3;
 export const OFFER_DAYS = 7;
 
+/**
+ * When a site's run in a tournament ended (knocked out, didn't make the bracket, or tournament over),
+ * which starts the participant offer. Null while it's still in. Used by the dashboard and the emails.
+ */
+export function runEndedAt(o: {
+  eliminatedRound: number | null | undefined;
+  tournamentFinished: boolean;
+  /** ends_at of the site's latest match, if it played one. */
+  lastMatchEndsAt: string | null | undefined;
+  qualifyingEndsAt: string | null | undefined;
+}): Date | null {
+  const out = o.eliminatedRound !== null && o.eliminatedRound !== undefined;
+  if (!out && !o.tournamentFinished) return null;
+  const at = o.lastMatchEndsAt ?? o.qualifyingEndsAt ?? null;
+  return at ? new Date(at) : new Date();
+}
+
+/** Last moment the participant offer is valid. */
+export function offerExpiresAt(runEnded: Date): Date {
+  return new Date(runEnded.getTime() + OFFER_DAYS * 86400_000);
+}
+
 /** True for a real amount ("$870"), false for "On request". */
 export function hasFixedPrice(price: string): boolean {
   return /\d/.test(price);
@@ -92,4 +114,14 @@ export function participantPrice(price: string): string {
 export const SERVICE_OPTIONS: string[] = SERVICES.flatMap((s) =>
   s.tiers ? s.tiers.map((t) => `${s.name} · ${t.title}`) : [s.name],
 );
+
+/** Topics for the footer "Contact" form (saved as leads with source "contact"). */
+export const CONTACT_TOPICS: string[] = [
+  "General question",
+  "My tournament entry",
+  "Payment or refund",
+  "Badge check",
+  "Backlink services",
+  "Partnership or press",
+];
 

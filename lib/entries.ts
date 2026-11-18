@@ -44,7 +44,7 @@ export async function skipQualifying(db: Admin, productId: string, path: EntryPa
 export async function revokePass(db: Admin, productId: string): Promise<{ ok: boolean }> {
   const { data: p, error } = await db
     .from("products")
-    .update({ pass_paid: false })
+    .update({ pass_paid: false, pass_paid_at: null })
     .eq("id", productId)
     .select("badge_status")
     .maybeSingle();
@@ -64,7 +64,11 @@ export async function revokePass(db: Admin, productId: string): Promise<{ ok: bo
 }
 
 export async function grantPass(db: Admin, productId: string): Promise<{ ok: boolean; tournament: string | null }> {
-  const { error } = await db.from("products").update({ pass_paid: true }).eq("id", productId);
+  const { error } = await db
+    .from("products")
+    .update({ pass_paid: true, pass_paid_at: new Date().toISOString() })
+    .eq("id", productId)
+    .eq("pass_paid", false);
   if (error) return { ok: false, tournament: null };
   return { ok: true, tournament: await skipQualifying(db, productId, "pass") };
 }

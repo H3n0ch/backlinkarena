@@ -1,6 +1,7 @@
 import { connection, NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabasePublic } from "@/lib/supabase/server";
+import { runEngine } from "@/lib/tournament-emails";
 
 type Snapshot = {
   /** Changes whenever a timer, status or match changes: the client refreshes the page then. */
@@ -60,7 +61,7 @@ export async function GET() {
   await connection();
   let s = await snapshot();
   if (s.due) {
-    await createSupabaseAdmin().rpc("advance_tournaments");
+    await runEngine(createSupabaseAdmin());
     s = await snapshot();
   }
   return NextResponse.json({ v: s.v, next: s.next }, { headers: { "cache-control": "no-store" } });

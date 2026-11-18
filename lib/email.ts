@@ -13,6 +13,47 @@ const API = "https://api.resend.com/emails";
 const FROM = process.env.EMAIL_FROM || "Backlink Arena <onboarding@resend.dev>";
 let warned = false;
 
+export type Outgoing = { to: string; email: Rendered; replyTo?: string };
+
+/**
+ * Sends many emails through Resend's batch endpoint (100 per request), so a whole bracket
+ * doesn't hit the per-second rate limit. Returns how many were accepted; never throws.
+ */
+export async function sendEmailBatch(items: Outgoing[]): Promise<number> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    if (!warned) console.warn("email: RESEND_API_KEY is not set, skipping emails");
+    warned = true;
+    return 0;
+  }
+  let sent = 0;
+  for (let i = 0; i < items.length; i += 100) {
+    const chunk = items.slice(i, i + 100);
+    try {
+      const res = await fetch(`${API}/batch`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+        body: JSON.stringify(
+          chunk.map((m) => ({
+            from: FROM,
+            to: m.to,
+            subject: m.email.subject,
+            html: m.email.html,
+            text: m.email.text,
+            ...(m.replyTo ? { reply_to: m.replyTo } : {}),
+          })),
+        ),
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!res.ok) console.error("email: Resend refused batch", res.status, await res.text());
+      else sent += chunk.length;
+    } catch (err) {
+      console.error("email: batch send failed", err);
+    }
+  }
+  return sent;
+}
+
 /** Sends one rendered email. Returns false (and logs) on any problem; never throws. */
 export async function sendEmail(to: string | string[], email: Rendered, opts: { replyTo?: string } = {}): Promise<boolean> {
   const key = process.env.RESEND_API_KEY;

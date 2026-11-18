@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CookieSettingsLink } from "@/components/Analytics";
-import { CONTACT_EMAIL, SUPABASE_CONFIGURED } from "@/lib/env";
+import { LeadButton } from "@/components/LeadButton";
+import { SUPABASE_CONFIGURED } from "@/lib/env";
 
 export function Footer() {
   return (
@@ -19,7 +20,7 @@ export function Footer() {
           <Link href="/winners">Winners</Link>
           <Link href="/rules">Rules</Link>
           <Link href="/privacy">Privacy</Link>
-          {CONTACT_EMAIL && <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>}
+          <LeadButton contact label="Contact" className="cursor-pointer font-semibold hover:underline" />
           <CookieSettingsLink />
         </nav>
       </div>

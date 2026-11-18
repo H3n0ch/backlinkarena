@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { getUser } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { runEngine } from "@/lib/tournament-emails";
 import type { ActionResult } from "@/lib/types";
 import { normalizeUrl, safeHttpUrl, slugify } from "@/lib/url";
 
@@ -459,7 +460,7 @@ export async function setMatchWinner(id: string, winner: string): Promise<Action
   await syncElimination(db, m, winner);
   await propagateWinner(db, m, winner);
   // Let the engine create the next round / finish the tournament right away.
-  await db.rpc("advance_tournaments");
+  await runEngine(db);
   return done("Winner set and match closed.");
 }
 
