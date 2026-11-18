@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Countdown } from "@/components/Countdown";
 import { LogoutButton } from "@/components/LogoutButton";
 import { LeadButton } from "@/components/LeadButton";
 import { ProductLogo } from "@/components/ProductLogo";
@@ -29,6 +28,7 @@ import { roundName } from "@/lib/time";
 import type { Entry, Match, Product, Tournament } from "@/lib/types";
 import { BadgeCard } from "./BadgeCard";
 import { EnterButton } from "./DashboardButtons";
+import { HowItWorks, StatsRow, TournamentBanner } from "./TournamentBanner";
 
 export const metadata: Metadata = { title: "Dashboard", robots: { index: false } };
 
@@ -58,46 +58,6 @@ function statusFor(t: Tournament | null, entry: Entry | undefined, productId: st
     return { label: `Out (${roundName(entry.eliminated_round, t.bracket_size)})`, tone: "red" };
   }
   return t.status === "bracket" ? { label: "In the bracket", tone: "mint" } : { label: "Played", tone: "muted" };
-}
-
-/** Where the tournament stands overall: phase, and the clock that matters for this phase. */
-function TournamentStrip({ tournament: t, winner }: { tournament: Tournament; winner: string | null }) {
-  const phase =
-    t.status === "draft"
-      ? { label: "Starting soon", tone: "bg-paper" }
-      : t.status === "qualifying"
-        ? { label: "Qualifying", tone: "bg-sun" }
-        : t.status === "bracket"
-          ? { label: "Bracket live", tone: "bg-mint-soft" }
-          : { label: "Finished", tone: "bg-paper" };
-  const paused = Boolean(t.paused_at) && t.status !== "finished";
-  return (
-    <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-line bg-white px-4 py-3 text-sm">
-      <span className="font-display text-base font-extrabold">{t.name}</span>
-      <span className={`rounded-full border border-line px-2.5 py-0.5 text-xs font-bold ${phase.tone}`}>{phase.label}</span>
-      {paused && <span className="rounded-full bg-red-soft px-2.5 py-0.5 text-xs font-bold">Paused</span>}
-      <span className="text-muted">
-        {t.status === "qualifying" &&
-          (t.qualifying_overtime || !t.qualifying_ends_at ? (
-            "The bracket starts once it's full."
-          ) : (
-            <>
-              Qualifying ends in{" "}
-              <span className="font-semibold text-ink">
-                <Countdown to={t.qualifying_ends_at} endedText="a moment" pausedAt={t.paused_at ?? null} />
-              </span>
-            </>
-          ))}
-        {t.status === "bracket" && "Matchups run one round at a time."}
-        {t.status === "finished" && (winner ? `🏆 Won by ${winner}.` : "This tournament is over.")}
-      </span>
-      {(t.status === "bracket" || t.status === "finished") && (
-        <Link href="/arena" className="ml-auto font-semibold underline">
-          See the bracket →
-        </Link>
-      )}
-    </div>
-  );
 }
 
 /**
@@ -432,17 +392,85 @@ async function Dashboard({
 
   const winner = tournament?.winner_product_id ? (matchProducts.get(tournament.winner_product_id)?.name ?? null) : null;
 
+  // Banner data: how full the bracket is, and when the open round ends (any matchup, not just ours).
+  let enteredCount = 0;
+  let openRound: { ends_at: string; round: number } | null = null;
+  if (tournament && tournament.status !== "finished") {
+    const admin = createSupabaseAdmin();
+    const [{ count }, { data: open }] = await Promise.all([
+      admin
+        .from("entries")
+        .select("id", { count: "exact", head: true })
+        .eq("tournament_id", tournament.id)
+        .is("disqualified_at", null),
+      tournament.status === "bracket"
+        ? admin
+            .from("matches")
+            .select("ends_at, round")
+            .eq("tournament_id", tournament.id)
+            .eq("status", "open")
+            .order("ends_at")
+            .limit(1)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    enteredCount = count ?? 0;
+    openRound = (open as { ends_at: string; round: number } | null) ?? null;
+  }
+
+  // Totals across all sites, and where the user is in the three steps.
+  const totals = sites.reduce(
+    (acc, s) => ({
+      views: acc.views + (s.stats?.views ?? 0),
+      votes: acc.votes + (s.stats?.votes ?? 0),
+      clicks: acc.clicks + (s.stats?.clicks ?? 0),
+    }),
+    { views: 0, votes: 0, clicks: 0 },
+  );
+  const stillIn = sites.some(
+    (s) => s.entry && s.entry.eliminated_round == null && !s.entry.disqualified_at && tournament?.status !== "finished",
+  );
+  const guideStep: number | null = sites.some((s) => s.status.tone === "mint" && s.status.label.includes("Winner"))
+    ? 2
+    : sites.some((s) => s.live || s.qualifyingAsk) || (stillIn && sites.some((s) => s.seated || s.live))
+      ? 1
+      : products.length === 0 || canEnter || !tournament || tournament.status === "finished"
+        ? 0
+        : null;
+
   return (
-    <div className="mx-auto max-w-3xl">
+    <>
+      {tournament && (
+        <TournamentBanner
+          tournament={tournament}
+          winner={winner}
+          entered={enteredCount}
+          roundEndsAt={openRound?.ends_at ?? null}
+          liveRound={openRound?.round ?? null}
+        />
+      )}
+    <div className="mx-auto mt-8 max-w-3xl">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-red-dark">Dashboard</p>
           <h1 className="font-display text-4xl font-extrabold">Your corner</h1>
-          <p className="text-muted">{user.email}</p>
+          <p className="text-sm text-muted">{user.email}</p>
         </div>
         <LogoutButton />
       </div>
 
-      {tournament && <TournamentStrip tournament={tournament} winner={winner} />}
+      <HowItWorks current={guideStep} />
+
+      {products.length > 0 && (
+        <StatsRow
+          items={[
+            { label: products.length === 1 ? "Website" : "Websites", value: products.length },
+            { label: "Matchup views", value: totals.views },
+            { label: "Votes", value: totals.votes },
+            { label: "Clicks to you", value: totals.clicks },
+          ]}
+        />
+      )}
 
       {pass && PASS_NOTICE[pass] && (
         <p className={`mt-4 rounded-2xl border border-line p-3 font-semibold ${PASS_NOTICE[pass].tone}`}>
@@ -472,7 +500,10 @@ async function Dashboard({
           </Link>
         </div>
       ) : (
-        <div className="mt-6 flex flex-col gap-6">
+        <div className="mt-8 flex flex-col gap-6">
+          <h2 className="-mb-2 font-display text-xl font-extrabold">
+            Your {products.length === 1 ? "website" : "websites"}
+          </h2>
           {sites.map(({ p, entry, current, live, seated, needsSeat, offerExpires, stats, status, shareLink, qualifyingAsk, step }) => {
             const offer = offerExpires && (
               <ParticipantOffer
@@ -615,5 +646,6 @@ async function Dashboard({
         </div>
       )}
     </div>
+    </>
   );
 }
