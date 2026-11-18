@@ -74,18 +74,22 @@ export function LeadButton({
         onClick={(e) => e.target === dialog.current && dialog.current?.close()}
         className="m-auto w-[min(32rem,calc(100%-2rem))] rounded-2xl p-0 text-ink shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-sm"
       >
+        {sent ? (
+          <SentView
+            form={form}
+            contact={contact}
+            offer={offer}
+            onClose={() => dialog.current?.close()}
+          />
+        ) : (
         <div className="p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-display text-2xl font-extrabold">
-                {sent ? "Thanks, we'll be in touch!" : contact ? "Contact us" : "Talk to us"}
-              </p>
+              <p className="font-display text-2xl font-extrabold">{contact ? "Contact us" : "Talk to us"}</p>
               <p className="mt-1 text-sm text-muted">
-                {sent
-                  ? "We usually reply within one business day."
-                  : contact
-                    ? "A question about the arena, your entry or a payment? Write us, we reply within one business day."
-                    : offer
+                {contact
+                  ? "A question about the arena, your entry or a payment? Write us, we reply within one business day."
+                  : offer
                     ? `Your participant price (${offer.discountLabel}) is saved with this request.`
                     : "Tell us about your site. We'll reply with a plan and the exact price."}
               </p>
@@ -100,11 +104,6 @@ export function LeadButton({
             </button>
           </div>
 
-          {sent ? (
-            <button type="button" onClick={() => dialog.current?.close()} className="btn mt-5 w-full bg-ink text-white">
-              Close
-            </button>
-          ) : (
             <form onSubmit={submit} className="mt-5 flex flex-col gap-3 text-left">
               <label className="flex flex-col gap-1 text-sm font-semibold">
                 {contact ? "What's it about?" : "What are you interested in?"}
@@ -159,9 +158,118 @@ export function LeadButton({
               </button>
               {error && <p className="text-sm font-semibold text-red">{error}</p>}
             </form>
-          )}
         </div>
+        )}
       </dialog>
     </>
+  );
+}
+
+/** Success state: confirmation, a summary of what was sent, and what happens next. */
+function SentView({
+  form,
+  contact,
+  offer,
+  onClose,
+}: {
+  form: { service: string; name: string; email: string; website: string; message: string };
+  contact: boolean;
+  offer?: { productId: string; discountLabel: string };
+  onClose: () => void;
+}) {
+  const firstName = form.name.trim().split(/\s+/)[0];
+  const steps = contact
+    ? [
+        ["We read your message", "A real person on the team looks at it, no bots."],
+        ["We reply within one business day", `The answer goes to ${form.email}.`],
+        ["Sorted", "Most questions are resolved in a single reply."],
+      ]
+    : [
+        ["We review your site", form.website ? `We look at ${form.website}, its niche and current links.` : "We look at your niche, goals and current links."],
+        ["You get a plan and exact price", `Within one business day, sent to ${form.email}.`],
+        ["Coffee time", "Your plan is on its way. We'll be in your inbox soon."],
+      ];
+  const summary: [string, string][] = [
+    [contact ? "Topic" : "Interested in", form.service],
+    ["Reply to", form.email],
+    ...(form.website ? [["Website", form.website] as [string, string]] : []),
+    ...(offer ? [["Your price", `Participant offer · ${offer.discountLabel}`] as [string, string]] : []),
+  ];
+
+  return (
+    <div className="relative overflow-hidden">
+      {/* Header band */}
+      <div
+        className="relative px-5 pb-6 pt-7 text-center text-white sm:px-6"
+        style={{ background: "var(--grad-dark)" }}
+      >
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="absolute right-3 top-3 rounded-lg px-2 text-2xl leading-none text-white/70 hover:bg-white/10 hover:text-white"
+        >
+          ×
+        </button>
+        <div
+          className="mx-auto grid size-14 place-items-center rounded-full text-white shadow-lg ring-4 ring-white/10"
+          style={{ background: "var(--grad-brand)" }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="size-7" aria-hidden="true">
+            <path d="M5 12.5l4.5 4.5L19 7.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <p className="mt-4 font-display text-2xl font-extrabold sm:text-3xl">
+          {contact ? "Message received" : "Request received"}
+          {firstName ? `, ${firstName}` : ""}!
+        </p>
+        <p className="mx-auto mt-1.5 max-w-sm text-sm text-white/75">
+          Thanks for reaching out. We&apos;ve sent a confirmation to{" "}
+          <span className="font-semibold text-white">{form.email}</span>.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-5 p-5 sm:p-6">
+        {/* What you sent */}
+        <div className="rounded-xl border border-line bg-cream/60 p-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Your request</p>
+          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+            {summary.map(([k, v]) => (
+              <div key={k} className="contents">
+                <dt className="text-muted">{k}</dt>
+                <dd className="truncate text-right font-semibold">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+
+        {/* What happens next */}
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">What happens next</p>
+          <ol className="mt-3 flex flex-col gap-3">
+            {steps.map(([title, body], i) => (
+              <li key={title} className="flex gap-3">
+                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-red-soft text-sm font-extrabold text-red-dark">
+                  {i + 1}
+                </span>
+                <div className="text-sm">
+                  <p className="font-semibold">{title}</p>
+                  <p className="text-muted">{body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <p className="rounded-lg bg-blue-soft px-3 py-2 text-xs text-ink/80">
+          Can&apos;t find our email? Check your spam or promotions folder and mark us as safe, so our reply lands in
+          your inbox.
+        </p>
+
+        <button type="button" onClick={onClose} className="btn w-full bg-red text-white">
+          Back to the arena
+        </button>
+      </div>
+    </div>
   );
 }
