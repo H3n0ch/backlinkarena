@@ -316,6 +316,12 @@ function Check() {
   );
 }
 
+const FREE_STEPS = [
+  { t: "Sign up", d: "Your brand lands on the qualifying list." },
+  { t: "Share your link", d: "Every vote you collect moves you up." },
+  { t: "Top voted get in", d: "They fill the open bracket spots." },
+];
+
 function Pricing() {
   return (
     <section id="pricing" className="mx-auto mt-24 max-w-5xl scroll-mt-20 px-4">
@@ -332,11 +338,19 @@ function Pricing() {
           <p className="font-display text-lg font-extrabold">Free entry</p>
           <p className="mt-1 text-sm text-muted">Get voted into the bracket.</p>
           <p className="mt-4 font-display text-4xl font-extrabold">$0</p>
-          <ul className="mt-5 flex flex-1 flex-col gap-2 text-sm">
-            <li><Check />Your own product page in the arena</li>
-            <li><Check />Spot on the qualifying leaderboard</li>
-            <li><Check />Top voted brands fill the open bracket spots</li>
-          </ul>
+          <ol className="mt-5 flex flex-1 flex-col gap-4 text-sm">
+            {FREE_STEPS.map((s, i) => (
+              <li key={s.t} className="flex gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[image:var(--grad-brand)] font-display text-sm font-extrabold text-white shadow">
+                  {i + 1}
+                </span>
+                <span>
+                  <span className="block font-bold">{s.t}</span>
+                  <span className="text-muted">{s.d}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
           <Link href="/join" className="btn mt-6 bg-card">
             Enter for free
           </Link>
@@ -407,7 +421,7 @@ const FAQ = [
   },
   {
     q: "How does the qualifying round work?",
-    a: "Free entries appear on a public leaderboard. Anyone logged in can vote once per brand. When qualifying ends, badge and pass holders take their spots first, then the most-voted brands fill the rest.",
+    a: "Free entries appear on a public leaderboard. Share your page to collect votes. Anyone can vote once per brand, no account needed. When qualifying ends, badge and pass holders take their spots first, then the most-voted brands fill the rest.",
   },
   {
     q: "Why would I get exposure if I lose?",

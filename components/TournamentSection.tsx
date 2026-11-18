@@ -5,12 +5,12 @@ import { CountdownBoxes } from "@/components/CountdownBoxes";
 import { JoinField } from "@/components/JoinField";
 import { MatchCarousel } from "@/components/MatchCarousel";
 import { MatchupCard } from "@/components/MatchupCard";
+import { PagedList } from "@/components/PagedList";
 import { ProductLogo } from "@/components/ProductLogo";
 import { getUser } from "@/lib/auth";
 import { getBracket, getLeaderboard } from "@/lib/data";
-import { readGuestId } from "@/lib/guest";
+import { qualifyingVotedSet } from "@/lib/qualifying";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { createSupabaseServer } from "@/lib/supabase/server";
 import { matchPath } from "@/lib/share";
 import { roundName } from "@/lib/time";
 import type { Product, Tournament } from "@/lib/types";
@@ -212,26 +212,7 @@ async function Qualifying({ tournament }: { tournament: Tournament }) {
       .not("seat", "is", null)
       .is("disqualified_at", null),
   ]);
-  let voted = new Set<string>();
-  if (user) {
-    const supabase = await createSupabaseServer();
-    const { data } = await supabase
-      .from("qualifying_votes")
-      .select("product_id")
-      .eq("tournament_id", tournament.id)
-      .eq("voter_id", user.id);
-    voted = new Set((data ?? []).map((r) => r.product_id as string));
-  } else {
-    const guestId = await readGuestId();
-    if (guestId) {
-      const { data } = await createSupabaseAdmin()
-        .from("qualifying_votes")
-        .select("product_id")
-        .eq("tournament_id", tournament.id)
-        .eq("guest_id", guestId);
-      voted = new Set((data ?? []).map((r) => r.product_id as string));
-    }
-  }
+  const voted = await qualifyingVotedSet(tournament.id, user?.id);
   // Same order the bracket is seeded in: badge/pass first, then most votes.
   const seeded = rows.filter((r) => r.entry_path !== "free");
   const free = rows.filter((r) => r.entry_path === "free");
@@ -283,7 +264,7 @@ async function Qualifying({ tournament }: { tournament: Tournament }) {
           </div>
         </div>
       ) : (
-        <ol className="flex flex-col gap-2">
+        <PagedList pageSize={20}>
           {[...seeded, ...free].map((r, i) => (
             <li
               key={r.product.id}
@@ -318,7 +299,7 @@ async function Qualifying({ tournament }: { tournament: Tournament }) {
               )}
             </li>
           ))}
-        </ol>
+        </PagedList>
       )}
     </section>
   );

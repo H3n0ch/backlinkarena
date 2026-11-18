@@ -2,17 +2,29 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { QualifyingVoteButton } from "@/app/arena/QualifyingVoteButton";
+import { Countdown } from "@/components/Countdown";
 import { ProductLogo } from "@/components/ProductLogo";
 import { TrackedLink } from "@/components/Track";
-import { getProductBySlug, getProductHistory } from "@/lib/data";
+import { getUser } from "@/lib/auth";
+import { getActiveTournament, getProductBySlug, getProductHistory } from "@/lib/data";
+import { qualifyingStanding, qualifyingVotedSet } from "@/lib/qualifying";
 import { roundName } from "@/lib/time";
+import type { Product, Tournament } from "@/lib/types";
 import { safeHttpUrl } from "@/lib/url";
 
 export async function generateMetadata({ params }: PageProps<"/p/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const p = await getProductBySlug(slug);
   if (!p) return { title: "Not found" };
-  return { title: p.name, description: p.description ?? `${p.name} on Backlink Arena` };
+  const t = await getActiveTournament();
+  const asking = t && (t.status === "qualifying" || t.status === "draft");
+  return {
+    title: asking ? `Vote ${p.name} into ${t.name}` : p.name,
+    description: asking
+      ? `${p.name} is in qualifying on Backlink Arena. The most-voted brands get into the bracket. One click, no sign-up.`
+      : (p.description ?? `${p.name} on Backlink Arena`),
+  };
 }
 
 export default function ProductPage({ params }: PageProps<"/p/[slug]">) {
@@ -29,7 +41,7 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) notFound();
-  const history = await getProductHistory(product.id);
+  const [history, tournament] = await Promise.all([getProductHistory(product.id), getActiveTournament()]);
   const href = safeHttpUrl(product.url);
 
   return (
@@ -57,6 +69,10 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
           </div>
         )}
       </div>
+
+      {tournament && (tournament.status === "qualifying" || tournament.status === "draft") && (
+        <QualifyCard tournament={tournament} product={product} />
+      )}
 
       <h2 className="mt-10 font-display text-2xl font-extrabold">Tournament history</h2>
       {history.length === 0 ? (
@@ -100,5 +116,62 @@ async function ProductContent({ params }: { params: Promise<{ slug: string }> })
         </ul>
       )}
     </>
+  );
+}
+
+/** "Vote us in": shown while a free entry collects qualifying votes. This is the page participants share. */
+async function QualifyCard({ tournament, product }: { tournament: Tournament; product: Product }) {
+  const [standing, user] = await Promise.all([qualifyingStanding(tournament, product.id), getUser()]);
+  if (!standing) return null;
+  const voted = await qualifyingVotedSet(tournament.id, user?.id);
+  const open = tournament.status === "qualifying" && !tournament.paused_at;
+  const inNow = standing.rank <= standing.size;
+
+  return (
+    <section className="card mt-6 border-2 border-red p-6">
+      <p className="text-xs font-extrabold uppercase tracking-wide text-red">{tournament.name} · Qualifying</p>
+      <h2 className="mt-1 font-display text-2xl font-extrabold">Vote {product.name} into the bracket</h2>
+      <p className="mt-1 text-sm text-muted">
+        The {standing.size} top brands get into the bracket. One click, no sign-up.
+      </p>
+      <div className="mt-4 flex flex-wrap items-center gap-4">
+        <div>
+          <p className="font-display text-3xl font-extrabold tabular-nums">{standing.votes}</p>
+          <p className="text-xs text-muted">vote{standing.votes === 1 ? "" : "s"}</p>
+        </div>
+        <div>
+          <p className="font-display text-3xl font-extrabold tabular-nums">
+            #{standing.rank}
+            <span className="text-base text-muted"> / {standing.total}</span>
+          </p>
+          <p className={`text-xs font-bold ${inNow ? "text-mint" : "text-red"}`}>
+            {inNow ? "In the bracket right now" : `${standing.votesToQualify} more to get in`}
+          </p>
+        </div>
+        <div className="ml-auto">
+          {open ? (
+            <QualifyingVoteButton
+              tournamentId={tournament.id}
+              productId={product.id}
+              own={user?.id === product.owner_id}
+              voted={voted.has(product.id)}
+            />
+          ) : (
+            <span className="text-sm text-muted">{tournament.paused_at ? "Voting is paused" : "Voting opens soon"}</span>
+          )}
+        </div>
+      </div>
+      {open && tournament.qualifying_ends_at && !tournament.qualifying_overtime && (
+        <p className="mt-4 text-sm">
+          Qualifying ends in{" "}
+          <strong className="font-mono">
+            <Countdown to={tournament.qualifying_ends_at} endedText="a moment" pausedAt={tournament.paused_at ?? null} />
+          </strong>
+        </p>
+      )}
+      <Link href="/arena" className="mt-3 inline-block text-sm font-semibold underline">
+        See the full leaderboard →
+      </Link>
+    </section>
   );
 }

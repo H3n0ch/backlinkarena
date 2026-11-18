@@ -22,6 +22,7 @@ import {
 } from "@/lib/services";
 import { PAYMENTS_CONFIGURED } from "@/lib/payments";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { qualifyingPostText } from "@/lib/qualifying";
 import { matchPath, matchShareUrl } from "@/lib/share";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { roundName } from "@/lib/time";
@@ -417,7 +418,13 @@ async function Dashboard({
         offerExpires,
         stats: exposure.get(p.id),
         status: statusFor(tournament, entry, p.id),
-        shareLink: current ? matchShareUrl(pathOf(current), p.slug) : `${SITE_URL}/arena?ref=${p.slug}`,
+        // Free entries in qualifying share their own page: it has the vote button, so voters don't hunt the list.
+        qualifyingAsk: !current && canEnter && entry?.entry_path === "free" && !entry.disqualified_at,
+        shareLink: current
+          ? matchShareUrl(pathOf(current), p.slug)
+          : canEnter && entry?.entry_path === "free"
+            ? `${SITE_URL}/p/${p.slug}`
+            : `${SITE_URL}/arena?ref=${p.slug}`,
         step: nextStep({ live, canEnter, entered: Boolean(entry), needsSeat, hasOffer: Boolean(offerExpires) }),
       };
     })
@@ -466,7 +473,7 @@ async function Dashboard({
         </div>
       ) : (
         <div className="mt-6 flex flex-col gap-6">
-          {sites.map(({ p, entry, current, live, seated, needsSeat, offerExpires, stats, status, shareLink, step }) => {
+          {sites.map(({ p, entry, current, live, seated, needsSeat, offerExpires, stats, status, shareLink, qualifyingAsk, step }) => {
             const offer = offerExpires && (
               <ParticipantOffer
                 product={p}
@@ -545,6 +552,17 @@ async function Dashboard({
                   );
                 })()}
 
+                {qualifyingAsk && (
+                  <div className="mt-4 rounded-xl border-2 border-red bg-paper p-4">
+                    <p className="font-bold">Get voted in</p>
+                    <p className="mb-3 text-sm text-muted">
+                      You&apos;re in qualifying: the {tournament?.bracket_size} most-voted brands get into the bracket. Share your
+                      page. It has a one-click vote button, no sign-up needed.
+                    </p>
+                    <ShareButtons link={shareLink} title="Share your vote page" text={qualifyingPostText(p.name, shareLink)} />
+                  </div>
+                )}
+
                 {step === "enter" && (
                   <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-paper p-4">
                     <p className="min-w-0 flex-1 text-sm">
@@ -565,7 +583,7 @@ async function Dashboard({
                 {((entry && stats) || (entry && !live) || (current && !live) || (offerExpires && step !== "offer")) && (
                   <div className="mt-5 flex flex-col gap-3 border-t border-line pt-4">
                     {entry && stats && <ExposureLine stats={stats} />}
-                    {entry && !live && (
+                    {entry && !live && !qualifyingAsk && (
                       <ShareButtons link={shareLink} title={current ? "Share your last matchup" : "Share your entry"} />
                     )}
                     {current && !live && (
