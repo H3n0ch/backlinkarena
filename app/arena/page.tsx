@@ -19,5 +19,5 @@ export default function ArenaPage() {
 }
 
 async function Arena() {
-  return <TournamentSection tournament={await getCurrentOrLastTournament()} />;
+  return <TournamentSection tournament={await getCurrentOrLastTournament()} stadium />;
 }

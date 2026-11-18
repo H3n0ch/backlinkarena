@@ -79,7 +79,7 @@ function GetSeat({
     <section className="border-gradient mt-4 rounded-[0.875rem] p-5">
       <h2 className="font-display text-2xl font-extrabold">Get your seat in {when}</h2>
       <p className="mt-1 text-sm text-muted">
-        {note ? `${note} ` : ""}Pick one. Either way you skip qualifying, and it never adds votes inside a match.
+        {note ? `${note} ` : ""}Entering is free, but free entries have to be voted in. Pick one of these to skip qualifying and go straight to the bracket. Neither adds votes inside a match.
       </p>
 
       <div className="mt-4 flex flex-col gap-3">
@@ -89,8 +89,8 @@ function GetSeat({
           }`}
         >
           <div className="min-w-0 flex-1">
-            <p className="font-bold">Pay $29</p>
-            <p className="text-sm text-muted">Your seat is secured right away. One-time payment, one tournament.</p>
+            <p className="font-bold">Pay $29 · guaranteed seat</p>
+            <p className="text-sm text-muted">Your bracket seat is secured right away and comes first. One-time payment, one tournament.</p>
           </div>
           {PAYMENTS_CONFIGURED ? (
             <form action={startPassCheckout.bind(null, p.id)}>
@@ -108,9 +108,9 @@ function GetSeat({
         >
           <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 [&::-webkit-details-marker]:hidden">
             <span className="min-w-0 flex-1">
-              <span className="block font-bold">Add our badge · free</span>
+              <span className="block font-bold">Add our badge · skip qualifying for free</span>
               <span className="block text-sm text-muted">
-                Put a link to Backlink Arena on your site. Once we&apos;ve verified it, you&apos;re in.
+                Put a link to Backlink Arena on your site. Once we&apos;ve verified it, you skip qualifying in every tournament for as long as the badge stays up. Badge seats are filled right after paid ones.
               </span>
             </span>
             {p.badge_status === "pending" ? (

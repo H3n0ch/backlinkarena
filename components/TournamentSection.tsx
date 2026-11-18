@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { QualifyingVoteButton } from "@/app/arena/QualifyingVoteButton";
 import { BracketBoard } from "@/components/BracketBoard";
 import { CountdownBoxes } from "@/components/CountdownBoxes";
 import { JoinField } from "@/components/JoinField";
@@ -7,6 +6,8 @@ import { MatchCarousel } from "@/components/MatchCarousel";
 import { MatchupCard } from "@/components/MatchupCard";
 import { PagedList } from "@/components/PagedList";
 import { ProductLogo } from "@/components/ProductLogo";
+import { PREMIUM_FRAME } from "@/components/premium";
+import { StadiumStand, StandRow } from "@/components/StadiumStand";
 import { getUser } from "@/lib/auth";
 import { getBracket, getLeaderboard } from "@/lib/data";
 import { qualifyingVotedSet } from "@/lib/qualifying";
@@ -21,10 +22,13 @@ const dateFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric
 export async function TournamentSection({
   tournament,
   carousel = false,
+  stadium = false,
 }: {
   tournament: Tournament | null;
   /** Show the current round's matchups as a swipeable carousel (home page). */
   carousel?: boolean;
+  /** Qualifying as a stadium: bracket in the middle, qualifying brands in the stands around it (/arena). */
+  stadium?: boolean;
 }) {
   if (!tournament) {
     return (
@@ -45,7 +49,7 @@ export async function TournamentSection({
   }
 
   if (tournament.status === "draft" || tournament.status === "qualifying") {
-    return <Qualifying tournament={tournament} />;
+    return stadium ? <Stadium tournament={tournament} /> : <Qualifying tournament={tournament} />;
   }
   return <Bracket tournament={tournament} carousel={carousel} />;
 }
@@ -201,7 +205,8 @@ async function Bracket({ tournament, carousel }: { tournament: Tournament; carou
   );
 }
 
-async function Qualifying({ tournament }: { tournament: Tournament }) {
+/** Leaderboard, projected bracket and who has voted for what: shared by both qualifying layouts. */
+async function qualifyingData(tournament: Tournament) {
   const [rows, user, { data: seatRows }] = await Promise.all([
     getLeaderboard(tournament.id),
     getUser(),
@@ -226,7 +231,107 @@ async function Qualifying({ tournament }: { tournament: Tournament }) {
   }
   const rest = [...seeded, ...free].filter((r) => !bySeat.has(r.product.id));
   for (let i = 0; i < size && rest.length; i++) if (!projected[i]) projected[i] = rest.shift()!.product;
-  const qualifying = tournament.status === "qualifying";
+  return { ranked: [...seeded, ...free], projected, user, voted, qualifying: tournament.status === "qualifying" };
+}
+
+function qualifyingHeader(tournament: Tournament, qualifying: boolean) {
+  return (
+    <BoardHeader
+      eyebrow={tournament.paused_at ? "Paused" : qualifying ? "Qualifying" : "Entries open"}
+      title="Projected bracket"
+      live={qualifying && !tournament.paused_at}
+      countdown={
+        qualifying && tournament.qualifying_ends_at
+          ? { to: tournament.qualifying_ends_at, label: "Bracket locks in", pausedAt: tournament.paused_at }
+          : undefined
+      }
+    />
+  );
+}
+
+/** Deep metallic gold for headings on the light page (the bright gold fades out on white). */
+const GOLD_ON_LIGHT: React.CSSProperties = {
+  backgroundImage: "linear-gradient(180deg, #f59e0b 0%, #d97706 45%, #b45309 75%, #78350f 100%)",
+  WebkitBackgroundClip: "text",
+  backgroundClip: "text",
+  color: "transparent",
+  WebkitTextFillColor: "transparent",
+};
+
+/** Stadium layout: the bracket is the pitch, qualifying brands fill the stands on both sides. */
+async function Stadium({ tournament }: { tournament: Tournament }) {
+  const { ranked, projected, user, voted, qualifying } = await qualifyingData(tournament);
+  const size = tournament.bracket_size;
+  const inside = ranked.slice(0, size);
+  const chasing = ranked.slice(size);
+  const open = size - inside.length;
+  const shared = { tournamentId: tournament.id, qualifying, userId: user?.id ?? null, voted, cutAt: size };
+  const join = "font-semibold text-amber-200 underline";
+
+  return (
+    <section>
+      <div className="mx-auto max-w-[100rem] px-3 sm:px-4">
+        <p className="text-center text-[10px] font-bold uppercase tracking-[0.32em] text-amber-700">The arena</p>
+        <h2 className="mt-2 mb-8 text-center font-display text-3xl font-extrabold uppercase tracking-tight sm:text-4xl">
+          <span style={GOLD_ON_LIGHT}>{tournament.name}</span>
+        </h2>
+        <div className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_18rem] xl:gap-5">
+          <StadiumStand
+            side="L"
+            eyebrow="West stand"
+            title="In the bracket"
+            rows={inside}
+            startRank={1}
+            empty={
+              <span>
+                No brands yet.{" "}
+                <Link href="/join" className={join}>
+                  Be the first in →
+                </Link>
+              </span>
+            }
+            {...shared}
+          />
+          <div className="order-first xl:order-none">
+            <BracketBoard
+              size={size}
+              matches={[]}
+              products={new Map()}
+              projected={projected}
+              header={qualifyingHeader(tournament, qualifying)}
+            />
+            <p className="mt-3 text-center text-xs text-muted">
+              Projected bracket of {size}. Paid and badge brands get in first, then the most votes.
+            </p>
+          </div>
+          <StadiumStand
+            side="R"
+            eyebrow="East stand"
+            title="Chasing a spot"
+            rows={chasing}
+            startRank={size + 1}
+            empty={
+              open > 0 ? (
+                <span>
+                  {open} bracket {open === 1 ? "spot is" : "spots are"} still open.{" "}
+                  <Link href="/join" className={join}>
+                    Claim one →
+                  </Link>
+                </span>
+              ) : (
+                "Nobody on the bubble yet. Out-vote a brand in the bracket to take its spot."
+              )
+            }
+            {...shared}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+async function Qualifying({ tournament }: { tournament: Tournament }) {
+  const { ranked: rows, projected, user, voted, qualifying } = await qualifyingData(tournament);
 
   return (
     <section className="mx-auto max-w-6xl px-3 sm:px-4">
@@ -236,71 +341,51 @@ async function Qualifying({ tournament }: { tournament: Tournament }) {
         matches={[]}
         products={new Map()}
         projected={projected}
-        header={
-          <BoardHeader
-            eyebrow={tournament.paused_at ? "Paused" : qualifying ? "Qualifying" : "Entries open"}
-            title="Projected bracket"
-            live={qualifying && !tournament.paused_at}
-            countdown={
-              qualifying && tournament.qualifying_ends_at
-                ? { to: tournament.qualifying_ends_at, label: "Bracket locks in", pausedAt: tournament.paused_at }
-                : undefined
-            }
-          />
-        }
+        header={qualifyingHeader(tournament, qualifying)}
       />
       <p className="mt-3 text-center text-xs text-muted">
         Projected bracket of {tournament.bracket_size}. Paid and badge brands get in first, then the most votes.
       </p>
 
-      <h3 className="mt-10 mb-4 text-center font-display text-lg font-extrabold uppercase">
-        Qualifying leaderboard
-      </h3>
-      {rows.length === 0 ? (
-        <div className="card mx-auto max-w-xl p-5 text-center">
-          <p className="font-bold">No brands yet. Be the first in.</p>
-          <div className="mt-3">
-            <JoinField />
+      <div style={PREMIUM_FRAME} className="mx-auto mt-10 max-w-3xl overflow-hidden rounded-[1.25rem]">
+        <div className="flex flex-wrap items-end justify-between gap-2 border-b border-white/10 px-4 py-4 sm:px-6">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-amber-200/80">Qualifying</p>
+            <h3 className="mt-1 font-display text-lg font-extrabold uppercase tracking-tight text-white sm:text-xl">
+              Leaderboard
+            </h3>
           </div>
+          <p className="text-[11px] text-white/45">
+            Top {tournament.bracket_size} make the bracket · {rows.length} {rows.length === 1 ? "brand" : "brands"}
+          </p>
         </div>
-      ) : (
-        <PagedList pageSize={20}>
-          {[...seeded, ...free].map((r, i) => (
-            <li
-              key={r.product.id}
-              className={`card flex items-center gap-3 p-3 ${i < tournament.bracket_size ? "" : "opacity-70"}`}
-            >
-              <span className="w-6 text-center font-display font-extrabold text-muted">{i + 1}</span>
-              <ProductLogo src={r.product.logo_url} name={r.product.name} size={40} />
-              <div className="min-w-0 flex-1">
-                <Link href={`/p/${r.product.slug}`} className="block truncate font-bold hover:underline">
-                  {r.product.name}
-                </Link>
-                <p className="truncate text-xs text-muted">{r.product.description ?? r.product.domain}</p>
+        <div className="p-3 sm:p-4">
+          {rows.length === 0 ? (
+            <div className="p-4 text-center">
+              <p className="font-bold text-white">No brands yet. Be the first in.</p>
+              <div className="mt-3">
+                <JoinField />
               </div>
-              {r.entry_path !== "free" ? (
-                <span className="shrink-0 rounded-full bg-blue-soft px-2.5 py-0.5 text-xs font-bold text-blue">
-                  Seeded
-                </span>
-              ) : (
-                <>
-                  <span className="font-display text-lg font-extrabold tabular-nums">{r.votes}</span>
-                  {qualifying ? (
-                    <QualifyingVoteButton
-                      tournamentId={tournament.id}
-                      productId={r.product.id}
-                      own={user?.id === r.product.owner_id}
-                      voted={voted.has(r.product.id)}
-                    />
-                  ) : (
-                    <span className="text-xs text-muted">Voting opens soon</span>
-                  )}
-                </>
-              )}
-            </li>
-          ))}
-        </PagedList>
-      )}
+            </div>
+          ) : (
+            <PagedList pageSize={20}>
+              {rows.map((r, i) => (
+                <StandRow
+                  key={r.product.id}
+                  row={r}
+                  rank={i + 1}
+                  cutAt={tournament.bracket_size}
+                  tournamentId={tournament.id}
+                  qualifying={qualifying}
+                  userId={user?.id ?? null}
+                  voted={voted}
+                  wide
+                />
+              ))}
+            </PagedList>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
