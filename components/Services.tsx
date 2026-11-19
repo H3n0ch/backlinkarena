@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { LeadButton } from "@/components/LeadButton";
 import { hasFixedPrice, SERVICES, type Service } from "@/lib/services";
@@ -38,7 +39,18 @@ export function Services({ page = false }: { page?: boolean }) {
             key={s.id}
             className={`flex flex-col rounded-[0.875rem] p-6 ${s.featured ? "border-gradient" : "card"}`}
           >
-            <h3 className={`headline text-2xl ${s.featured ? "text-gradient" : ""}`}>{s.name}</h3>
+            <div className="flex items-start justify-between gap-3">
+              <h3 className={`headline text-2xl ${s.featured ? "text-gradient" : ""}`}>{s.name}</h3>
+              {s.icon && (
+                <Image
+                  src={s.icon.src}
+                  width={s.icon.width}
+                  height={s.icon.height}
+                  alt={s.icon.alt}
+                  className="-mt-2 h-12 w-auto shrink-0"
+                />
+              )}
+            </div>
             <p className="mt-1 text-sm text-muted">{s.tagline}</p>
 
             {s.tiers ? (
@@ -80,6 +92,17 @@ export function Services({ page = false }: { page?: boolean }) {
                 </li>
               ))}
             </ul>
+
+            {s.image && (
+              <Image
+                src={s.image.src}
+                width={s.image.width}
+                height={s.image.height}
+                alt={s.image.alt}
+                sizes="(min-width: 768px) 480px, 100vw"
+                className="mt-5 h-auto w-full rounded-xl ring-1 ring-line"
+              />
+            )}
 
             <LeadButton
               label={`${s.cta} →`}

@@ -30,6 +30,10 @@ export type Service = {
   features: string[];
   cta: string;
   featured?: boolean;
+  /** Optional visual at the top of the card (from /public). */
+  image?: { src: string; width: number; height: number; alt: string };
+  /** Optional small badge next to the card title (from /public). */
+  icon?: { src: string; width: number; height: number; alt: string };
 };
 
 export const SERVICES: Service[] = [
@@ -69,6 +73,13 @@ export const SERVICES: Service[] = [
       "Report with the published article",
     ],
     cta: "Request a quote",
+    image: {
+      src: "/press/press-fan.webp",
+      width: 1556,
+      height: 672,
+      alt: "Illustration of brand features in online news media",
+    },
+    icon: { src: "/press/press-logos.webp", width: 449, height: 198, alt: "Online media logos" },
   },
 ];
 

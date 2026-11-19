@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { LeadButton } from "@/components/LeadButton";
 import { Services } from "@/components/Services";
@@ -200,6 +201,19 @@ export default function ServicesPage() {
             A backlink tells Google you&apos;re trustworthy. A feature in well-known media tells people. The two do
             different jobs, and most growing brands need both.
           </p>
+          <figure className="mt-8">
+            <Image
+              src="/press/press-grid.webp"
+              width={1488}
+              height={715}
+              alt="Illustration of brand features in online news media"
+              sizes="(min-width: 1024px) 944px, 100vw"
+              className="h-auto w-full rounded-xl ring-1 ring-white/10"
+            />
+            <figcaption className="mt-2 text-xs text-white/45">
+              Illustration only. Outlets and placements are agreed per request.
+            </figcaption>
+          </figure>
           <ul className="mt-8 grid gap-4 sm:grid-cols-2">
             {WHY_PRESS.map((w) => (
               <li key={w.t} className="rounded-xl bg-white/[0.06] p-5 ring-1 ring-white/10">
