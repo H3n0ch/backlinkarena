@@ -89,7 +89,22 @@ function Hero() {
         <span className="h-1.5 w-1.5 rounded-full bg-[image:var(--grad-brand)]" /> DA 50+ backlinks · Free to enter
       </span>
       <h1 className="headline text-5xl sm:text-7xl">
-        Battle for <span className="text-gradient animate-shimmer">free backlinks.</span>
+        Battle for{" "}
+        <span className="text-gradient animate-shimmer">
+          free{" "}
+          {/* nowrap keeps the logo on the same line as "backlinks." */}
+          <span className="whitespace-nowrap">
+            backlinks.
+            <img
+              src="/badge/backlink-arena-icon-v6.svg"
+              alt=""
+              aria-hidden="true"
+              width={80}
+              height={80}
+              className="ml-2 inline-block h-[1.15em] w-[1.15em] rotate-6 align-[-0.22em] drop-shadow-[0_10px_18px_rgb(234_88_12/0.35)] sm:ml-3"
+            />
+          </span>
+        </span>
       </h1>
       <p className="mx-auto mt-5 max-w-xl text-base sm:text-lg">
         Battle other brands for a <strong>DA 50+ link worth $500</strong> in your niche. Both sides share every matchup, so even
