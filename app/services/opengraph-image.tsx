@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { getFonts, OG_SIZE } from "@/lib/og-card";
 import { SERVICES } from "@/lib/services";
 
-export const alt = "Buy high DA backlinks: real outreach, no PBNs. Packages from $870.";
+export const alt = "Buy high DA backlinks: real outreach, no PBNs. From $249.";
 export const size = OG_SIZE;
 export const contentType = "image/png";
 

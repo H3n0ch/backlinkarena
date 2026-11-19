@@ -9,7 +9,7 @@ import { faqSchema, JsonLd, servicesSchema } from "@/lib/json-ld";
 export const metadata: Metadata = {
   title: { absolute: "Buy High DA Backlinks: Real Outreach, No PBNs | Backlink Arena" },
   description:
-    "Buy high DA backlinks placed through manual outreach: do-follow links in real content on relevant sites in your niche. White hat link building, no PBNs, from $870.",
+    "Buy high DA backlinks placed through manual outreach: do-follow links in real content on relevant sites in your niche. White hat link building, no PBNs, from $249.",
   alternates: { canonical: "/services" },
 };
 
@@ -103,7 +103,7 @@ const FAQ: { q: string; a: React.ReactNode; plain?: string }[] = [
   },
   {
     q: "How much do backlinks cost?",
-    a: "A placement on a relevant niche site usually costs a few hundred dollars, more for DA 50+ sites and well-known media. Our packages start at $870 for 3 placements, $1,670 for 5 (incl. 1 DA 50+ site) and $3,560 for 10 (incl. 3 DA 50+ sites). The final price depends on your industry and the sites you pick.",
+    a: "A placement on a relevant niche site usually costs a few hundred dollars, more for DA 50+ sites and well-known media. You can start with a single placement for $249. Packages are $870 for 3 placements and $1,670 for 5 (incl. 1 DA 50+ site); bigger orders on request. The final price depends on your industry and the sites you pick.",
   },
   {
     q: "Are these white hat backlinks?",

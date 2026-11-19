@@ -7,10 +7,17 @@
  *   niche site DA50+  median cost  $410
  *   media outlet DA50+ (do-follow) median cost  $650
  * Pricing = supplier cost + $100 margin per placement / feature:
+ *   1 link   = 1x <=150 (starter, see below)  cost + ~$100 -> $249
  *   3 links  = 3x190            = $570   cost + $300  -> $870
  *   5 links  = 4x190 + 1x410    = $1,170 cost + $500  -> $1,670
- *   10 links = 7x190 + 3x410    = $2,560 cost + $1,000 -> $3,560
+ *   (10 links = $3,560 was dropped from the card: too many choices. Quote bigger orders on request.)
  * Press features have no fixed price: quoted per outlet ("On request").
+ *
+ * Starter (1 link, $249): an entry offer for founders without a budget yet, so they ask at all.
+ * Supply check (Nov 2026, English, no nofollow/sponsored note, 5k+ Ahrefs traffic, DA 30+):
+ * ~180 sites in Tech / Web / Business / News / Career / Finance / Edu cost <= $150 (half of them $80–120).
+ * Hand-pick: many of the cheapest are APK / bio / "write for us" sites, skip those.
+ * Cost cap $150 keeps the participant price ($174 at 30% off) above cost.
  */
 
 export type ServiceTier = {
@@ -42,9 +49,9 @@ export const SERVICES: Service[] = [
     name: "Backlink Placement",
     tagline: "We do the outreach and get your link into content on relevant, established sites in your industry.",
     tiers: [
+      { price: "$249", title: "1 placement", detail: "Niche site, DA 30+, real traffic", tag: "Starter" },
       { price: "$870", title: "3 placements", detail: "Relevant sites in your industry" },
       { price: "$1,670", title: "5 placements", detail: "Incl. 1 DA 50+ site", tag: "Most popular" },
-      { price: "$3,560", title: "10 placements", detail: "Incl. 3 DA 50+ sites", tag: "Best value" },
     ],
     features: [
       "Hand-picked sites that match your industry and audience",
