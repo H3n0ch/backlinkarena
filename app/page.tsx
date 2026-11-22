@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { JoinField } from "@/components/JoinField";
+import { HeroVideo } from "@/components/HeroVideo";
 import { GOLD_TEXT, PREMIUM_FRAME } from "@/components/premium";
 import { ProductLogo } from "@/components/ProductLogo";
 import { Services } from "@/components/Services";
@@ -81,6 +82,7 @@ const STEPS = [
 function Hero() {
   return (
     <section className="relative isolate mx-auto max-w-3xl px-4 pt-12 pb-6 text-center sm:pt-20">
+      <HeroVideo />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 -top-10 -z-10 mx-auto h-80 max-w-2xl rounded-full bg-[radial-gradient(closest-side,rgb(249_115_22/0.28),rgb(225_29_72/0.12)_55%,transparent)] blur-2xl"
