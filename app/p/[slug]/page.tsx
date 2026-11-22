@@ -19,11 +19,14 @@ export async function generateMetadata({ params }: PageProps<"/p/[slug]">): Prom
   if (!p) return { title: "Not found" };
   const t = await getActiveTournament();
   const asking = t && (t.status === "qualifying" || t.status === "draft");
+  // Always our own title/description. Never the brand's scraped og:description, or Google shows
+  // their copy (e.g. BET's "Celebrities, Music, News…") as our result and treats the page as duplicate.
   return {
-    title: asking ? `Vote ${p.name} into ${t.name}` : p.name,
+    title: asking ? `Vote ${p.name} into ${t.name}` : `${p.name} on Backlink Arena`,
     description: asking
       ? `${p.name} is in qualifying on Backlink Arena. The most-voted brands get into the bracket. One click, no sign-up.`
-      : (p.description ?? `${p.name} on Backlink Arena`),
+      : `${p.name}'s tournament history on Backlink Arena: matchups, votes and results in the battle for DA 50+ backlinks.`,
+    alternates: { canonical: `/p/${slug}` },
   };
 }
 
