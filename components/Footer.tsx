@@ -3,6 +3,17 @@ import { CookieSettingsLink } from "@/components/Analytics";
 import { LeadButton } from "@/components/LeadButton";
 import { SUPABASE_CONFIGURED } from "@/lib/env";
 
+// Launch badges shown in the footer. To remove one, delete its line (or comment it out).
+const LAUNCH_BADGES = [
+  {
+    href: "https://submityourstartup.now/s/backlink-arena",
+    src: "https://submityourstartup.now/s/backlink-arena/badge.png",
+    alt: "Backlink Arena: launched on Submit Your Startup",
+    width: 260,
+    height: 60,
+  },
+];
+
 export function Footer() {
   return (
     <footer className="mt-16 bg-[linear-gradient(180deg,transparent,#fff7ed_60%,#ffe4e6)]">
@@ -25,6 +36,16 @@ export function Footer() {
           <CookieSettingsLink />
         </nav>
       </div>
+      {LAUNCH_BADGES.length > 0 && (
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 pb-6">
+          {LAUNCH_BADGES.map((b) => (
+            <a key={b.href} href={b.href} target="_blank" rel="noopener">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={b.src} alt={b.alt} width={b.width} height={b.height} loading="lazy" />
+            </a>
+          ))}
+        </div>
+      )}
     </footer>
   );
 }
