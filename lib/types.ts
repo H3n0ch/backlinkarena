@@ -20,6 +20,8 @@ export type Product = {
   badge_page?: string | null;
   /** When the badge went to "pending" (manual check queue). */
   badge_requested_at?: string | null;
+  /** Links to the owner's two social posts for the badge path (migration 0019). */
+  badge_posts?: string[] | null;
   created_at: string;
 };
 

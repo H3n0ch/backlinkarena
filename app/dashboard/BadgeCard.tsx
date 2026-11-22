@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { checkBadge } from "@/app/actions/badge";
 import { CopyButton } from "@/components/CopyButton";
 import { badgeFormats } from "@/lib/badge";
+import { shareLinks } from "@/lib/share";
 
 type Theme = "light" | "dark";
 type Format = "html" | "text" | "markdown" | "image";
@@ -24,12 +25,19 @@ const PLATFORMS: [string, string][] = [
   ["Next.js / React", "Paste the HTML into your footer component (use className instead of class if needed)."],
 ];
 
+/** A ready-made post: points to their own Backlink Arena page, so the post helps them too. */
+function postText(name: string, page: string) {
+  return `${name} is competing on Backlink Arena 🥊 1v1 product battles where visitors vote for the winner. Come and back us: ${page}`;
+}
+
 export function BadgeCard({
   siteUrl,
   slug,
   productId,
   domain,
   badgeStatus,
+  name,
+  posts = [],
   compact = false,
 }: {
   siteUrl: string;
@@ -37,12 +45,18 @@ export function BadgeCard({
   productId: string;
   domain: string;
   badgeStatus: "none" | "pending" | "verified";
+  /** Product name, for the ready-made social post. */
+  name: string;
+  /** The two social post links saved with the last check. */
+  posts?: string[];
   /** Inside the dashboard's "get your seat" choice: no box, no heading of its own. */
   compact?: boolean;
 }) {
   const [theme, setTheme] = useState<Theme>("light");
   const [format, setFormat] = useState<Format>("html");
   const [page, setPage] = useState("");
+  const [post1, setPost1] = useState(posts[0] ?? "");
+  const [post2, setPost2] = useState(posts[1] ?? "");
   const [showRules, setShowRules] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
@@ -50,6 +64,7 @@ export function BadgeCard({
   const f = badgeFormats(siteUrl, slug, theme);
   const code = format === "html" ? f.html : format === "text" ? f.text : format === "markdown" ? f.markdown : f.page;
   const badgePath = `/badge/${theme === "dark" ? "featured-dark.svg" : "featured.svg"}`;
+  const share = shareLinks(f.page, postText(name, f.page));
 
   return (
     <div className={compact ? "mt-4" : "mt-6 rounded-2xl border border-line bg-blue-soft/40 p-4 sm:p-5"}>
@@ -73,8 +88,8 @@ export function BadgeCard({
             </button>
           </p>
           <p className={compact ? "hidden" : "mt-1 text-sm"}>
-            Put a link to Backlink Arena on your website. As soon as we find it, you go{" "}
-            <strong>straight into the bracket</strong>, no qualifying votes needed.
+            Put a link to Backlink Arena on your website and share two posts about us on your social accounts. As soon
+            as we find the link, you go <strong>straight into the bracket</strong>, no qualifying votes needed.
           </p>
           {showRules && (
             <div className="mt-3 rounded-xl border border-line bg-white p-3 text-sm">
@@ -82,7 +97,8 @@ export function BadgeCard({
               <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-5">
                 <li>Put the badge on a page of your own site (or a subdomain), ideally the footer.</li>
                 <li>Use a normal link: no nofollow, sponsored or ugc.</li>
-                <li>Keep it live. We may check it again at any time.</li>
+                <li>Share two public posts about Backlink Arena on social accounts of your choice (X, LinkedIn, Facebook, Reddit…).</li>
+                <li>Keep the badge and the posts live. We may check them again at any time.</li>
                 <li>If it&apos;s removed, you can lose your guaranteed spot and go back to free qualifying.</li>
                 <li>Your spot never adds votes inside a match.</li>
               </ul>
@@ -165,30 +181,81 @@ export function BadgeCard({
         </p>
       </details>
 
-      {/* Step 3: verify */}
+      {/* Step 3: two social posts */}
+      <p className="mt-5 text-xs font-bold uppercase tracking-wider text-muted">3 · Share two posts about us</p>
+      <p className="mt-2 text-sm text-muted">
+        Post about Backlink Arena twice, on any social accounts you like (two platforms, or two posts on one). Use our
+        text or write your own, then paste the links to both posts below so we can check them.
+      </p>
+      <pre className="mt-2 whitespace-pre-wrap rounded-xl border border-line bg-white p-3 text-xs">{share.text}</pre>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <CopyButton text={share.text} label="Copy post" className="btn bg-white text-sm" />
+        <a href={share.x} target="_blank" rel="noopener noreferrer" className="btn bg-white text-sm">
+          Post on X ↗
+        </a>
+        <a href={share.linkedin} target="_blank" rel="noopener noreferrer" className="btn bg-white text-sm">
+          Share on LinkedIn ↗
+        </a>
+      </div>
+      {badgeStatus === "verified" && posts.length > 0 && (
+        <ul className="mt-3 flex flex-col gap-1 text-sm">
+          {posts.map((x, i) => (
+            <li key={x} className="truncate">
+              <span className="font-semibold">Post {i + 1}:</span>{" "}
+              <a href={x} target="_blank" rel="noopener noreferrer" className="underline">
+                {x}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Step 4: verify */}
       {badgeStatus !== "verified" && (
         <>
-          <p className="mt-5 text-xs font-bold uppercase tracking-wider text-muted">3 · Check it</p>
+          <p className="mt-5 text-xs font-bold uppercase tracking-wider text-muted">4 · Check it</p>
           <form
-            className="mt-2 flex flex-col gap-2 sm:flex-row"
+            className="mt-2 flex flex-col gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               setResult(null);
               start(async () => {
-                const r = await checkBadge(productId, page);
+                const r = await checkBadge(productId, page, [post1, post2]);
                 setResult(r.ok ? { ok: true, text: r.message ?? "Done." } : { ok: false, text: r.error });
               });
             }}
           >
-            <input
-              className="field"
-              placeholder={`Page with the link (optional, default: ${domain})`}
-              value={page}
-              onChange={(e) => setPage(e.target.value)}
-            />
-            <button className="btn shrink-0 border-ink bg-ink text-white" disabled={pending}>
-              {pending ? "Checking your site…" : "Check my badge"}
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                className="field"
+                inputMode="url"
+                required
+                placeholder="Link to social post 1"
+                aria-label="Link to social post 1"
+                value={post1}
+                onChange={(e) => setPost1(e.target.value)}
+              />
+              <input
+                className="field"
+                inputMode="url"
+                required
+                placeholder="Link to social post 2"
+                aria-label="Link to social post 2"
+                value={post2}
+                onChange={(e) => setPost2(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                className="field"
+                placeholder={`Page with the badge (optional, default: ${domain})`}
+                value={page}
+                onChange={(e) => setPage(e.target.value)}
+              />
+              <button className="btn shrink-0 border-ink bg-ink text-white" disabled={pending}>
+                {pending ? "Checking your site…" : "Check my badge & posts"}
+              </button>
+            </div>
           </form>
           {result && (
             <p className={`mt-2 text-sm font-semibold ${result.ok ? "text-mint" : "text-red-dark"}`}>{result.text}</p>

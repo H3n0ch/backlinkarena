@@ -84,7 +84,8 @@ const SECTIONS: Section[] = [
     rules: [
       "Put the badge on a page of your own site (or a subdomain), ideally in the footer.",
       "Use a normal link: no nofollow, sponsored or ugc.",
-      "Keep it live. We may check it again at any time.",
+      "Also share two public posts about Backlink Arena on social accounts of your choice, and add their links in your dashboard.",
+      "Keep the badge and the posts live. We may check them again at any time.",
       "If it's removed, you can lose your guaranteed spot and go back to free qualifying.",
       "A verified badge carries over: it skips qualifying in every tournament you enter while the badge is live.",
     ],

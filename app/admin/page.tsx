@@ -47,6 +47,27 @@ export default function AdminPage() {
 }
 
 const small = "btn bg-card text-xs py-1! px-3!";
+
+/** The owner's two social posts for the badge path, to check by hand. */
+function PostLinks({ posts }: { posts?: string[] | null }) {
+  if (!posts?.length) return <span className="text-xs font-semibold text-red-dark">No social posts</span>;
+  return (
+    <span className="inline-flex flex-wrap gap-1">
+      {posts.map((x, i) => (
+        <a
+          key={x}
+          href={x}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={x}
+          className="btn bg-card px-3! py-1! text-xs underline"
+        >
+          Post {i + 1} ↗
+        </a>
+      ))}
+    </span>
+  );
+}
 const dateFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
 /** Paid pass first (who paid first), then badge, then free by votes, then earliest signup. */
@@ -403,7 +424,8 @@ async function Admin() {
           </h2>
           <p className="text-sm text-muted">
             These owners say our badge is on their site, but the automatic check didn&apos;t find it. Open their page and
-            look for a followed link to Backlink Arena (it may only show after the page loads). <strong>Approve</strong>{" "}
+            look for a followed link to Backlink Arena (it may only show after the page loads), and open their two social
+            posts. <strong>Approve</strong>{" "}
             makes them a badge entry (seated right after paid brands). <strong>Reject</strong> keeps them free and emails
             them what to fix.
           </p>
@@ -433,6 +455,7 @@ async function Admin() {
                   >
                     Open their page ↗
                   </a>
+                  <PostLinks posts={p.badge_posts} />
                   <ActionButton action={recheckBadge.bind(null, p.id)} label="Check again" className={small} />
                   <ActionButton
                     action={verifyBadge.bind(null, p.id)}
@@ -713,6 +736,11 @@ async function Admin() {
                       <span className={p.badge_status === "pending" ? "rounded bg-sun px-1 font-bold" : ""}>
                         {p.badge_status}
                       </span>
+                      {(p.badge_posts?.length ?? 0) > 0 && (
+                        <div className="mt-1">
+                          <PostLinks posts={p.badge_posts} />
+                        </div>
+                      )}
                     </td>
                     <td className="py-2 pr-3">{p.pass_paid ? "paid" : "-"}</td>
                     <td className="py-2">

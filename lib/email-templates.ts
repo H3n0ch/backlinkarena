@@ -150,11 +150,19 @@ export function leadConfirmEmail(l: LeadInfo): Rendered {
 // ---------------------------------------------------------------------------
 
 /** To the admin when the automatic badge check failed and someone waits for a manual check. */
-export function badgeCheckAdminEmail(o: { name: string; domain: string; page: string; owner: string; siteUrl: string }): Rendered {
+export function badgeCheckAdminEmail(o: {
+  name: string;
+  domain: string;
+  page: string;
+  posts: string[];
+  owner: string;
+  siteUrl: string;
+}): Rendered {
   const items: [string, string][] = [
     ["Site", `${o.name} (${o.domain})`],
     ["Owner", o.owner || "-"],
     ["Badge page", o.page],
+    ...o.posts.map((x, i): [string, string] => [`Social post ${i + 1}`, x]),
   ];
   const subject = `Badge to check: ${o.domain}`;
   const html = layout({
@@ -163,13 +171,13 @@ export function badgeCheckAdminEmail(o: { name: string; domain: string; page: st
     body:
       eyebrow("Badge check") +
       h1(o.name) +
-      p("says our badge is on their site, but the automatic check didn't find it (often a site that loads with JavaScript). Open the page, look for the link to Backlink Arena, then approve or reject it in the control room.") +
+      p("says our badge is on their site, but the automatic check didn't find it (often a site that loads with JavaScript). Open the page, look for the link to Backlink Arena, check their two social posts, then approve or reject it in the control room.") +
       rows(items) +
       button(o.page, "Open their page") +
       button(`${o.siteUrl}/admin#badge-checks`, "Open badge checks"),
     footer: "Admin notification from Backlink Arena.",
   });
-  const text = `Badge to check: ${o.name} (${o.domain})\nOwner: ${o.owner || "-"}\nPage: ${o.page}\n\nApprove or reject: ${o.siteUrl}/admin#badge-checks`;
+  const text = `Badge to check: ${o.name} (${o.domain})\nOwner: ${o.owner || "-"}\nPage: ${o.page}\n${o.posts.map((x, i) => `Post ${i + 1}: ${x}`).join("\n")}\n\nApprove or reject: ${o.siteUrl}/admin#badge-checks`;
   return { subject, html, text };
 }
 

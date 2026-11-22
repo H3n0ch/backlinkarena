@@ -110,7 +110,7 @@ function GetSeat({
             <span className="min-w-0 flex-1">
               <span className="block font-bold">Add our badge · skip qualifying for free</span>
               <span className="block text-sm text-muted">
-                Put a link to Backlink Arena on your site. Once we&apos;ve verified it, you skip qualifying in every tournament for as long as the badge stays up. Badge seats are filled right after paid ones.
+                Put a link to Backlink Arena on your site and share two posts about us on your social accounts. Once we&apos;ve verified them, you skip qualifying in every tournament for as long as the badge stays up. Badge seats are filled right after paid ones.
               </span>
             </span>
             {p.badge_status === "pending" ? (
@@ -128,6 +128,8 @@ function GetSeat({
             productId={p.id}
             domain={p.domain}
             badgeStatus={p.badge_status}
+            name={p.name}
+            posts={p.badge_posts ?? []}
             compact
           />
         </details>
@@ -295,7 +297,7 @@ async function Dashboard({
   const [{ data: productRows }, tournament] = await Promise.all([
     supabase
       .from("products")
-      .select(PRODUCT_PUBLIC_COLUMNS)
+      .select(`${PRODUCT_PUBLIC_COLUMNS}, badge_posts`)
       .eq("owner_id", user.id)
       .order("created_at"),
     getCurrentOrLastTournament(),
