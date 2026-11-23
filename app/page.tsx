@@ -109,8 +109,8 @@ function Hero() {
         </span>
       </h1>
       <p className="mx-auto mt-5 max-w-xl text-base sm:text-lg">
-        Battle other brands for a <strong>DA 50+ link worth $500</strong> in your niche. Both sides share every matchup, so even
-        if you lose, <strong>new audiences see you</strong>. No outreach, no pitching.
+        Go 1v1 against another brand. You both share the matchup, so <strong>their audience discovers you too</strong>, win or
+        lose. Every round brings a new rival and <strong>a new audience</strong>. The winner gets a <strong>DA 50+ link worth $500</strong> in their niche. No outreach, no pitching.
       </p>
 
       <div className="relative mx-auto mt-7 max-w-lg">
