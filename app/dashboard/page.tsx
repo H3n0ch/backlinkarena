@@ -79,28 +79,10 @@ function GetSeat({
     <section className="border-gradient mt-4 rounded-[0.875rem] p-5">
       <h2 className="font-display text-2xl font-extrabold">Get your seat in {when}</h2>
       <p className="mt-1 text-sm text-muted">
-        {note ? `${note} ` : ""}Entering is free, but free entries have to be voted in. Pick one of these to skip qualifying and go straight to the bracket. Neither adds votes inside a match.
+        {note ? `${note} ` : ""}Two ways in: add our badge and share (free), or pay $29. Both go straight to the bracket. Neither adds votes inside a match.
       </p>
 
       <div className="mt-4 flex flex-col gap-3">
-        <div
-          className={`flex flex-wrap items-center gap-3 rounded-xl border bg-white p-4 ${
-            plan === "pass" ? "border-red ring-2 ring-red/30" : "border-line"
-          }`}
-        >
-          <div className="min-w-0 flex-1">
-            <p className="font-bold">Pay $29 · guaranteed seat</p>
-            <p className="text-sm text-muted">Your bracket seat is secured right away and comes first. One-time payment, one tournament.</p>
-          </div>
-          {PAYMENTS_CONFIGURED ? (
-            <form action={startPassCheckout.bind(null, p.id)}>
-              <button className="btn bg-red text-white">Pay $29 →</button>
-            </form>
-          ) : (
-            <span className="text-sm font-semibold text-muted">Coming soon</span>
-          )}
-        </div>
-
         <details
           id={`badge-${p.id}`}
           open={plan === "badge" || p.badge_status === "pending"}
@@ -108,7 +90,7 @@ function GetSeat({
         >
           <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 [&::-webkit-details-marker]:hidden">
             <span className="min-w-0 flex-1">
-              <span className="block font-bold">Add our badge · skip qualifying for free</span>
+              <span className="block font-bold">Badge + share · free seat</span>
               <span className="block text-sm text-muted">
                 Put a link to Backlink Arena on your site and share two posts about us on your social accounts. Once we&apos;ve verified them, you skip qualifying in every tournament for as long as the badge stays up. Badge seats are filled right after paid ones.
               </span>
@@ -133,6 +115,24 @@ function GetSeat({
             compact
           />
         </details>
+
+        <div
+          className={`flex flex-wrap items-center gap-3 rounded-xl border bg-white p-4 ${
+            plan === "pass" ? "border-red ring-2 ring-red/30" : "border-line"
+          }`}
+        >
+          <div className="min-w-0 flex-1">
+            <p className="font-bold">Pay $29 · guaranteed seat</p>
+            <p className="text-sm text-muted">No badge, no posts. Your seat is secured right away and comes first. One-time payment, one tournament.</p>
+          </div>
+          {PAYMENTS_CONFIGURED ? (
+            <form action={startPassCheckout.bind(null, p.id)}>
+              <button className="btn bg-red text-white">Pay $29 →</button>
+            </form>
+          ) : (
+            <span className="text-sm font-semibold text-muted">Coming soon</span>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -482,9 +482,7 @@ async function Dashboard({
 
       {joined && (
         <p className="mt-4 rounded-2xl border border-line bg-mint-soft p-3 font-semibold">
-          {plan
-            ? "Your website is in! One step left: pick how to get your seat below."
-            : "Your website is in!"}
+          Your website is in! One step left: pick how to get your seat below.
         </p>
       )}
 
@@ -585,28 +583,39 @@ async function Dashboard({
                   );
                 })()}
 
-                {qualifyingAsk && (
-                  <div className="mt-4 rounded-xl border-2 border-red bg-paper p-4">
-                    <p className="font-bold">Get voted in</p>
-                    <p className="mb-3 text-sm text-muted">
-                      You&apos;re in qualifying: the {tournament?.bracket_size} most-voted brands get into the bracket. Share your
-                      page. It has a one-click vote button, no sign-up needed.
-                    </p>
-                    <ShareButtons link={shareLink} title="Share your vote page" text={qualifyingPostText(p.name, shareLink)} />
-                  </div>
-                )}
-
-                {step === "enter" && (
+                {/* Seated brands just confirm their entry; everyone else picks Badge or $29 first. */}
+                {step === "enter" && !needsSeat && (
                   <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-paper p-4">
                     <p className="min-w-0 flex-1 text-sm">
                       <span className="block font-bold">{tournament?.name} is open.</span>
-                      <span className="text-muted">Enter for free and collect votes in qualifying, or get a seat below to skip it.</span>
+                      <span className="text-muted">Your seat is secured. Enter to take it.</span>
                     </p>
                     <EnterButton productId={p.id} />
                   </div>
                 )}
 
                 {(step === "seat" || (step === "enter" && needsSeat)) && getSeat}
+
+                {step === "enter" && needsSeat && (
+                  <div className="mt-3 flex flex-wrap items-center gap-3 px-1">
+                    <p className="min-w-0 flex-1 text-sm text-muted">
+                      Not ready for either? Enter free and try to get voted in.
+                    </p>
+                    <EnterButton productId={p.id} quiet />
+                  </div>
+                )}
+
+                {/* Free-voting fallback: below Badge / $29, never above it. */}
+                {qualifyingAsk && (
+                  <div className="mt-4 rounded-xl border border-line bg-paper p-4">
+                    <p className="font-bold">Or get voted in</p>
+                    <p className="mb-3 text-sm text-muted">
+                      You&apos;re on the qualifying list. Seats left after badge and paid brands go to the most-voted brands.
+                      Share your page: it has a one-click vote button, no sign-up needed.
+                    </p>
+                    <ShareButtons link={shareLink} title="Share your vote page" text={qualifyingPostText(p.name, shareLink)} />
+                  </div>
+                )}
 
                 {step === "offer" && offer}
 

@@ -58,27 +58,32 @@ export function magicLinkEmail(): Rendered {
 export function welcomeEmail(o: { name: string; slug: string; entered: boolean; siteUrl: string }): Rendered {
   const page = `${o.siteUrl}/p/${o.slug}`;
   const pageLabel = page.replace(/^https?:\/\//, "");
+  const seat =
+    "One step left: get your seat. Add our badge and share two posts (free), or pay $29. Both take you straight into the bracket.";
   const status = o.entered
-    ? "You're in the current tournament. Every vote on your page counts toward a bracket spot."
-    : "We'll email you when the next tournament opens, so you can enter. Your page is already live.";
+    ? "You're on the qualifying list of the current tournament."
+    : "We'll email you when the next tournament opens. Your page is already live.";
+  const fallback = o.entered
+    ? "Not ready for either? Share your page: the most-voted brands fill any seats that are left."
+    : "";
   const subject = `${o.name} is in the arena`;
   const html = layout({
     title: subject,
-    preheader: `${o.name} is in. Share your page to start collecting votes.`,
+    preheader: `${o.name} is in. One step left: get your seat.`,
     body:
       eyebrow(o.entered ? "You're in" : "Spot saved") +
       h1(o.name, "is in the arena") +
       p(esc(status)) +
+      p(esc(seat)) +
+      button(`${o.siteUrl}/dashboard`, "Get your seat") +
       vs(o.name, "Your rival") +
       p("Your rival shares this matchup with their followers, and you share it with yours. Both sites are on every share, so new people find you either way.", { muted: true, small: true }) +
-      button(`${o.siteUrl}/dashboard`, "Open your dashboard") +
       panel(
         `<strong style="color:#fbbf24">Your page</strong><br><a href="${esc(page)}" style="color:#fafaf9">${esc(pageLabel)}</a>` +
-          `<br><br><strong style="color:#fbbf24">Get more votes</strong><br>` +
-          `Post twice: at the start and in the last hours. Ask 5 people directly. Say "one click, no sign-up".`,
+          (fallback ? `<br><br>${esc(fallback)}` : ""),
       ),
   });
-  const text = `${o.name} is in the arena\n\n${status}\n\nYour page: ${page}\nYour dashboard: ${o.siteUrl}/dashboard\n\nTip: post twice (start + last hours), ask 5 people directly, and say "one click, no sign-up".`;
+  const text = `${o.name} is in the arena\n\n${status}\n\n${seat}\n\nGet your seat: ${o.siteUrl}/dashboard\nYour page: ${page}${fallback ? `\n\n${fallback}` : ""}`;
   return { subject, html, text };
 }
 

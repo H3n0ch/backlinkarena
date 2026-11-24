@@ -6,7 +6,7 @@ import { getActiveTournament, getBracket } from "@/lib/data";
 export async function AnnouncementBar() {
   const t = await getActiveTournament();
 
-  let label = "Free entry · The winner gets a DA 50+ backlink";
+  let label = "Free with our badge · The winner gets a DA 50+ backlink";
   let deadline: { text: string; to: string } | null = null;
   /** Short status tag in front of the label: what phase we're in. */
   let tag: string | null = null;
@@ -49,7 +49,7 @@ export async function AnnouncementBar() {
           </p>
         )}
         <Link href="/#pricing" className="hidden font-bold text-red hover:underline sm:inline">
-          Free to enter · or skip qualifying: $29 →
+          Get your seat: badge (free) or $29 →
         </Link>
       </div>
     </div>

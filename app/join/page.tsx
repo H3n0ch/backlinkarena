@@ -13,15 +13,15 @@ export const metadata: Metadata = {
 const INTRO = {
   free: {
     title: "Enter the arena",
-    text: "Free entries play the qualifying round. The top of the leaderboard makes the 16-site bracket.",
+    text: "Add your website, then pick how you get your seat: our badge and two posts (free), or $29.",
   },
   badge: {
-    title: "Get your guaranteed spot",
-    text: "Add your website first. Then put our badge on your site and you skip qualifying, free.",
+    title: "Get your free seat",
+    text: "Add your website first. Then put our badge on your site, share two posts, and your seat is secured.",
   },
   pass: {
     title: "Get your guaranteed spot",
-    text: "Add your website first. Then pay $29 once and you skip qualifying in one tournament.",
+    text: "Add your website first. Then pay $29 once and your seat in one tournament is secured.",
   },
 } as const;
 

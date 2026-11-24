@@ -88,7 +88,7 @@ function Hero() {
         className="pointer-events-none absolute inset-x-0 -top-10 -z-10 mx-auto h-80 max-w-2xl rounded-full bg-[radial-gradient(closest-side,rgb(249_115_22/0.28),rgb(225_29_72/0.12)_55%,transparent)] blur-2xl"
       />
       <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-red/20 bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-widest text-red-dark shadow-sm backdrop-blur">
-        <span className="h-1.5 w-1.5 rounded-full bg-[image:var(--grad-brand)]" /> DA 50+ backlinks · Free to enter
+        <span className="h-1.5 w-1.5 rounded-full bg-[image:var(--grad-brand)]" /> DA 50+ backlinks · Free with our badge
       </span>
       <h1 className="headline text-5xl sm:text-7xl">
         Battle for{" "}
@@ -333,82 +333,61 @@ function Check() {
   );
 }
 
-const FREE_STEPS = [
-  { t: "Sign up", d: "Your brand lands on the qualifying list." },
-  { t: "Share your link", d: "Every vote you collect moves you up." },
-  { t: "Top voted get in", d: "They fill the open bracket spots." },
-];
-
 function Pricing() {
   return (
     <section id="pricing" className="mx-auto mt-24 max-w-5xl scroll-mt-20 px-4">
       <p className="text-gradient mx-auto w-fit text-center text-xs font-bold uppercase tracking-widest">Pricing</p>
       <h2 className="headline mt-2 text-center text-4xl sm:text-5xl">
-        Pick your <span className="text-gradient">way in</span>
+        Two ways to get <span className="text-gradient">your seat</span>
       </h2>
       <p className="mx-auto mt-3 max-w-lg text-center text-muted">
-        Every path plays by the same rules. Nothing paid or earned adds votes inside a match.
+        Both get you straight into the bracket. Neither adds a single vote inside a match.
       </p>
 
       <div className="mx-auto mt-10 grid max-w-4xl gap-4 md:grid-cols-2">
-        <div className="card flex flex-col p-6">
-          <p className="font-display text-lg font-extrabold">Free entry</p>
-          <p className="mt-1 text-sm text-muted">Get voted into the bracket.</p>
+        <div className="relative flex flex-col overflow-hidden rounded-[0.875rem] bg-dark-gradient p-6 text-white shadow-[0_24px_60px_-24px_rgb(234_88_12/0.6)] ring-1 ring-white/10">
+          <span aria-hidden="true" className="line-gradient absolute inset-x-0 top-0" />
+          <span className="absolute right-4 top-4 rounded-full bg-[image:var(--grad-brand)] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider shadow">
+            Most popular
+          </span>
+          <p className="headline text-2xl">Badge + share</p>
+          <p className="mt-1 text-sm text-white/70">Help spread the word, get your seat.</p>
           <p className="mt-4 font-display text-4xl font-extrabold">$0</p>
-          <ol className="mt-5 flex flex-1 flex-col gap-4 text-sm">
-            {FREE_STEPS.map((s, i) => (
-              <li key={s.t} className="flex gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[image:var(--grad-brand)] font-display text-sm font-extrabold text-white shadow">
-                  {i + 1}
-                </span>
-                <span>
-                  <span className="block font-bold">{s.t}</span>
-                  <span className="text-muted">{s.d}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-          <Link href="/join" className="btn mt-6 bg-card">
-            Enter for free
+          <ul className="mt-5 flex flex-1 flex-col gap-2 text-sm">
+            <li><Check />Add our badge to your site</li>
+            <li><Check />Share 2 public posts about us</li>
+            <li><Check />Seat in every tournament while the badge is live</li>
+          </ul>
+          <Link
+            href="/join?plan=badge"
+            className="btn mt-6 bg-[image:var(--grad-brand)] text-white shadow-[0_10px_24px_-10px_rgb(234_88_12/0.8)] hover:brightness-110"
+          >
+            Add the badge →
           </Link>
         </div>
 
-        <div className="relative flex flex-col overflow-hidden rounded-[0.875rem] bg-dark-gradient p-6 text-white shadow-[0_24px_60px_-24px_rgb(234_88_12/0.6)] ring-1 ring-white/10 md:-my-3 md:py-9">
-          <span aria-hidden="true" className="line-gradient absolute inset-x-0 top-0" />
-          <span className="absolute right-4 top-4 rounded-full bg-[image:var(--grad-brand)] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider shadow">
-            Skip qualifying
-          </span>
-          <p className="headline text-2xl">Guaranteed spot</p>
-          <p className="mt-1 text-sm text-white/70">Straight into the next bracket. Pick how you pay:</p>
+        <div className="card flex flex-col p-6">
+          <p className="font-display text-2xl font-extrabold">Guaranteed spot</p>
+          <p className="mt-1 text-sm text-muted">No badge, no posts. Just play.</p>
+          <p className="mt-4 font-display text-4xl font-extrabold">$29</p>
           <ul className="mt-5 flex flex-1 flex-col gap-2 text-sm">
-            <li><Check />Everything in Free</li>
-            <li><Check />No votes needed to get in</li>
-            <li><Check />Never adds votes inside a match</li>
+            <li><Check />Nothing to add to your site</li>
+            <li><Check />Seat in one tournament</li>
+            <li><Check />Paid while no tournament is open? It counts for the next one</li>
           </ul>
-          <div className="mt-6 grid grid-cols-2 gap-2">
-            <Link
-              href="/join?plan=badge"
-              className="group flex flex-col rounded-xl bg-white/[0.06] p-3 ring-1 ring-white/15 transition hover:bg-white/[0.12] hover:ring-white/30"
-            >
-              <span className="font-display text-2xl font-extrabold">$0</span>
-              <span className="text-xs text-white/70">Add our badge to your site</span>
-              <span className="mt-2 text-sm font-bold">
-                Add the badge <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
-              </span>
-            </Link>
-            <Link
-              href="/join?plan=pass"
-              className="group flex flex-col rounded-xl bg-[image:var(--grad-brand)] p-3 shadow-[0_10px_24px_-10px_rgb(234_88_12/0.8)] transition hover:brightness-110"
-            >
-              <span className="font-display text-2xl font-extrabold">$29</span>
-              <span className="text-xs text-white/85">No badge, one tournament</span>
-              <span className="mt-2 text-sm font-bold">
-                Pay $29 <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
-              </span>
-            </Link>
-          </div>
+          <Link href="/join?plan=pass" className="btn mt-6 bg-red text-white">
+            Pay $29 →
+          </Link>
         </div>
       </div>
+
+      <p className="mt-6 text-center text-sm text-muted">
+        Not ready for either?{" "}
+        <Link href="/join" className="font-semibold underline">
+          Join free and try to get voted in
+        </Link>
+        .
+      </p>
     </section>
   );
 }
@@ -418,11 +397,11 @@ function Pricing() {
 const FAQ = [
   {
     q: "Is it really free?",
-    a: "Yes. Entering with your website and voting are free. Want to skip qualifying? Add our badge to your site for free, or pay $29 for a guaranteed spot in one tournament.",
+    a: "Yes. Add our badge to your site and share 2 posts about us, and you get a seat in the bracket for free. Don't want the badge? Pay $29 for a guaranteed spot in one tournament. Voting is always free.",
   },
   {
     q: "How does a tournament work?",
-    a: "Qualifying picks the 16 brands for the bracket. Then it's knockout: round of 16, quarterfinals, semifinals, final. Each matchup runs for a set time, and the brand with more votes moves on.",
+    a: "16 brands get a seat in the bracket: badge and paid brands first, then the most-voted free entries. Then it's knockout: round of 16, quarterfinals, semifinals, final. Each matchup runs for a set time, and the brand with more votes moves on.",
   },
   {
     q: "What exactly does the winner get?",
@@ -437,8 +416,8 @@ const FAQ = [
     a: "No. Think of it like priority boarding: you get on faster, but everyone flies on the same plane. Paying $29 or adding our badge only skips qualifying and gets you into the bracket. It never adds votes to a matchup. Every visitor gets one vote per matchup, no sign-up needed, and you can't vote in a matchup you're part of.",
   },
   {
-    q: "How does the qualifying round work?",
-    a: "Free entries appear on a public leaderboard. Share your page to collect votes. Anyone can vote once per brand, no account needed. When qualifying ends, badge and pass holders take their spots first, then the most-voted brands fill the rest.",
+    q: "How do I get a seat?",
+    a: "Two ways: add our badge and share 2 posts (free), or pay $29. Both take a seat as soon as they're done. Not ready for either? Join free and collect votes on the qualifying list. The most-voted brands fill any seats that are left.",
   },
   {
     q: "Why would I get exposure if I lose?",

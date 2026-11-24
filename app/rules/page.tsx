@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "How Backlink Arena works: entering, qualifying, the bracket, voting, ties, fair play and prizes.",
 };
 
-const UPDATED = "November 17, 2026";
+const UPDATED = "November 24, 2026";
 
 type Section = { id: string; title: string; rules: ReactNode[] };
 
@@ -22,7 +22,7 @@ const SECTIONS: Section[] = [
     title: "Entering",
     rules: [
       "Anyone can enter a website for free. It gets its own brand page in the arena right away, with a link to your site.",
-      "There are three ways in: free entry (you qualify with votes), adding our badge (free, skips qualifying) or the $29 guaranteed spot (skips qualifying).",
+      "There are two ways to a guaranteed seat: add our badge and share two posts (free), or pay $29. Both skip qualifying. You can also enter free and try to qualify with votes.",
       "Badge and paid entries never add votes to a matchup. They only decide who gets into the bracket.",
       "You can only enter websites you own or run.",
     ],

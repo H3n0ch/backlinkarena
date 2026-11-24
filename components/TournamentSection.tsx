@@ -302,8 +302,8 @@ async function Stadium({ tournament }: { tournament: Tournament }) {
             />
             <p className="mt-3 text-center text-xs text-muted">
               <span className="font-semibold text-ink">Projected bracket of {size}, not final until it locks.</span>{" "}
-              Seeded brands (paid or backlink) are guaranteed a spot. Free brands fill the remaining seats by votes and
-              can still move in or out.
+              Badge and paid brands are guaranteed a spot. Free entries fill any seats left by votes and can still move
+              in or out.
             </p>
           </div>
           <StadiumStand
