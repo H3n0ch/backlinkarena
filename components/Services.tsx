@@ -34,11 +34,21 @@ export function Services({ page = false }: { page?: boolean }) {
       </p>
 
       <div className="mt-10 grid gap-4 md:grid-cols-2">
-        {SERVICES.map((s) => (
+        {SERVICES.map((s) => {
+          // Dark cards swap the muted grey for translucent white so text stays readable.
+          const muted = s.dark ? "text-white/70" : "text-muted";
+          return (
           <article
             key={s.id}
-            className={`flex flex-col rounded-[0.875rem] p-6 ${s.featured ? "border-gradient" : "card"}`}
+            className={`relative flex flex-col overflow-hidden rounded-[0.875rem] p-6 ${
+              s.dark
+                ? "bg-dark-gradient text-white shadow-[0_24px_60px_-24px_rgb(234_88_12/0.6)] ring-1 ring-white/10"
+                : s.featured
+                  ? "border-gradient"
+                  : "card"
+            }`}
           >
+            {s.dark && <span aria-hidden="true" className="line-gradient absolute inset-x-0 top-0" />}
             <div className="flex items-start justify-between gap-3">
               <h3 className={`headline text-2xl ${s.featured ? "text-gradient" : ""}`}>{s.name}</h3>
               {s.icon && (
@@ -51,7 +61,7 @@ export function Services({ page = false }: { page?: boolean }) {
                 />
               )}
             </div>
-            <p className="mt-1 text-sm text-muted">{s.tagline}</p>
+            <p className={`mt-1 text-sm ${muted}`}>{s.tagline}</p>
 
             {s.tiers ? (
               <ul className="mt-5 flex flex-col divide-y divide-line rounded-xl border border-line bg-white/80">
@@ -78,9 +88,9 @@ export function Services({ page = false }: { page?: boolean }) {
             ) : (
               <p className="mt-5 font-display text-4xl font-extrabold">
                 {s.price && hasFixedPrice(s.price) && (
-                  <span className="mr-1 block text-sm font-semibold text-muted">Starts at</span>
+                  <span className={`mr-1 block text-sm font-semibold ${muted}`}>Starts at</span>
                 )}
-                {s.price} <span className="text-sm font-semibold text-muted">{s.priceUnit}</span>
+                {s.price} <span className={`text-sm font-semibold ${muted}`}>{s.priceUnit}</span>
               </p>
             )}
 
@@ -100,17 +110,24 @@ export function Services({ page = false }: { page?: boolean }) {
                 height={s.image.height}
                 alt={s.image.alt}
                 sizes="(min-width: 768px) 480px, 100vw"
-                className="mt-5 h-auto w-full rounded-xl ring-1 ring-line"
+                className={`mt-5 h-auto w-full rounded-xl ring-1 ${s.dark ? "ring-white/10" : "ring-line"}`}
               />
             )}
 
             <LeadButton
               label={`${s.cta} →`}
               service={defaultOption(s)}
-              className={`btn mt-6 ${s.featured ? "border-red bg-red text-white" : "bg-card"}`}
+              className={`btn mt-6 ${
+                s.dark
+                  ? "border-transparent bg-[image:var(--grad-brand)] text-white shadow-[0_10px_24px_-10px_rgb(234_88_12/0.8)] hover:brightness-110"
+                  : s.featured
+                    ? "border-red bg-red text-white"
+                    : "bg-card"
+              }`}
             />
           </article>
-        ))}
+          );
+        })}
       </div>
 
       <p className="mx-auto mt-6 max-w-xl rounded-xl bg-soft-gradient px-4 py-3 text-center text-sm ring-1 ring-red/15">

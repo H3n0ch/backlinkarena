@@ -37,6 +37,8 @@ export type Service = {
   features: string[];
   cta: string;
   featured?: boolean;
+  /** Dark card (like the Badge pricing card). */
+  dark?: boolean;
   /** Optional visual at the top of the card (from /public). */
   image?: { src: string; width: number; height: number; alt: string };
   /** Optional small badge next to the card title (from /public). */
@@ -80,6 +82,7 @@ export const SERVICES: Service[] = [
       "Report with the published article",
     ],
     cta: "Request a quote",
+    dark: true,
     image: {
       src: "/press/press-fan.webp",
       width: 1556,

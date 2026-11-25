@@ -10,6 +10,7 @@ import { ProductLogo } from "@/components/ProductLogo";
 import { ShareButtons } from "@/components/ShareButtons";
 import { SiteSkeleton } from "@/components/SiteSkeleton";
 import { trackClick } from "@/components/Track";
+import { useVoteBurst } from "@/components/VoteBurst";
 import type { Counts } from "@/lib/types";
 
 export type ArenaProduct = {
@@ -147,6 +148,8 @@ export function MatchArena(props: {
   const [mobileSide, setMobileSide] = useState<Key>("a");
   const [sheet, setSheet] = useState<"share" | "voted" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [justVoted, setJustVoted] = useState(false);
+  const { fire, bursts } = useVoteBurst();
   const router = useRouter();
 
   const live = status === "open" && !ended;
@@ -212,11 +215,14 @@ export function MatchArena(props: {
     };
   }, []);
 
-  function vote(productId: string) {
+  /** `rect`: where the clicked button sits, so the celebration bursts from it. */
+  function vote(productId: string, k: Key, rect: DOMRect) {
     setError(null);
     start(async () => {
       const r = await castVote(matchId, productId, props.refSlug);
       if (r.ok && r.data) {
+        fire(rect, k === "a" ? "#f97316" : "#14b8a6");
+        setJustVoted(true);
         setCounts(r.data.counts);
         setVotedFor(productId);
         setNextMatchId(r.data.nextMatchId);
@@ -250,7 +256,7 @@ export function MatchArena(props: {
     }
     if (votedFor === p.id) {
       return (
-        <span className={`${base} is-voted`}>
+        <span className={`${base} is-voted ${justVoted ? "just-voted" : ""}`}>
           <CheckIcon /> Voted
         </span>
       );
@@ -279,7 +285,7 @@ export function MatchArena(props: {
         style={waiting ? ({ "--fill": `${((GATE_SECONDS - gate) / GATE_SECONDS) * 100}%` } as CSSProperties) : undefined}
         disabled={waiting || pending}
         aria-label={waiting ? `Vote for ${p.name} available in ${gate} seconds` : `Vote for ${p.name}`}
-        onClick={() => vote(p.id)}
+        onClick={(e) => vote(p.id, k, e.currentTarget.getBoundingClientRect())}
       >
         {waiting ? (
           <>
@@ -303,7 +309,8 @@ export function MatchArena(props: {
     if (compact) {
       return (
         <span
-          className={`shrink-0 rounded-full ${SIDE[k].soft} ${SIDE[k].text} px-2 py-0.5 text-center text-xs font-extrabold tabular-nums`}
+          key={n}
+          className={`animate-pop shrink-0 rounded-full ${SIDE[k].soft} ${SIDE[k].text} px-2 py-0.5 text-center text-xs font-extrabold tabular-nums`}
           aria-label={label}
         >
           {label}
@@ -312,7 +319,8 @@ export function MatchArena(props: {
     }
     return (
       <span className="flex shrink-0 flex-col items-center leading-none" aria-label={label}>
-        <span className={`font-display text-xl font-extrabold tabular-nums ${SIDE[k].text}`}>{n}</span>
+        {/* key={n}: re-mounts on every new count, so the number pops each time it goes up. */}
+        <span key={n} className={`animate-pop font-display text-xl font-extrabold tabular-nums ${SIDE[k].text}`}>{n}</span>
         <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted">
           {n === 1 ? "vote" : "votes"}
         </span>
@@ -546,6 +554,7 @@ export function MatchArena(props: {
           </div>
         </div>
       )}
+      {bursts}
     </div>
   );
 }
