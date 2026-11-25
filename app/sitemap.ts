@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { connection } from "next/server";
 import { getBracket, getCurrentOrLastTournament } from "@/lib/data";
+import { POSTS } from "@/content/blog";
+import { COMPARISONS } from "@/content/compare";
 import { SITE_URL } from "@/lib/env";
 import { matchPath } from "@/lib/share";
 import { createSupabasePublic } from "@/lib/supabase/server";
@@ -16,7 +18,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/join`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE_URL}/winners`, changeFrequency: "weekly", priority: 0.6 },
     { url: `${SITE_URL}/founders`, changeFrequency: "monthly", priority: 0.4 },
-    { url: `${SITE_URL}/rules`,changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE_URL}/free-backlinks`, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${SITE_URL}/blog`, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${SITE_URL}/compare`, changeFrequency: "monthly", priority: 0.5 },
+    ...POSTS.map((p) => ({
+      url: `${SITE_URL}/blog/${p.slug}`,
+      lastModified: p.updated ?? p.published,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
+    ...COMPARISONS.map((c) => ({
+      url: `${SITE_URL}/compare/${c.slug}`,
+      lastModified: c.checked,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
+    { url: `${SITE_URL}/rules`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/privacy`, changeFrequency: "yearly", priority: 0.2 },
   ];
 

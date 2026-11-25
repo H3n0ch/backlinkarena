@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const VIDEO_ID = "FppBszMOLmQ";
+const VIDEO_ID = "LYfKrJJwdMI";
 const THUMB = `https://i.ytimg.com/vi/${VIDEO_ID}/hqdefault.jpg`;
 
 /**

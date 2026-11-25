@@ -80,3 +80,37 @@ export function servicesSchema() {
     })),
   };
 }
+
+/** BlogPosting schema for a blog post or comparison page. */
+export function articleSchema(a: { path: string; title: string; description: string; published: string; updated?: string }) {
+  const url = `${SITE_URL}${a.path}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "@id": `${url}#article`,
+    mainEntityOfPage: url,
+    url,
+    headline: a.title,
+    description: a.description,
+    datePublished: a.published,
+    dateModified: a.updated ?? a.published,
+    author: { "@id": ORG_ID },
+    publisher: { "@id": ORG_ID },
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+  };
+}
+
+/** BreadcrumbList from [name, path] pairs, starting after Home. */
+export function breadcrumbSchema(items: [name: string, path: string][]) {
+  const all: [string, string][] = [["Home", "/"], ...items];
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: all.map(([name, path], i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name,
+      item: `${SITE_URL}${path === "/" ? "" : path}`,
+    })),
+  };
+}

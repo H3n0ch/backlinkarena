@@ -1,3 +1,5 @@
+import { POSTS } from "@/content/blog";
+import { COMPARISONS } from "@/content/compare";
 import { SITE_URL } from "@/lib/env";
 import { OFFER_DAYS, PARTICIPANT_DISCOUNT, SERVICES } from "@/lib/services";
 
@@ -9,6 +11,9 @@ export function GET() {
       : `  - Price: ${s.price}${s.priceUnit ? ` (${s.priceUnit})` : ""}`;
     return `- **${s.name}**: ${s.tagline}\n${prices}`;
   }).join("\n");
+
+  const guides = POSTS.map((p) => `- [${p.title}](${SITE_URL}/blog/${p.slug}): ${p.description}`).join("\n");
+  const compare = COMPARISONS.map((c) => `- [${c.title}](${SITE_URL}/compare/${c.slug}): ${c.verdict}`).join("\n");
 
   const body = `# Backlink Arena
 
@@ -35,6 +40,16 @@ All placements: hand-picked sites in the client's industry, personal outreach to
 - [Winners](${SITE_URL}/winners): past champions and their placed backlinks
 - [Join](${SITE_URL}/join): enter a website for free
 - [Rules](${SITE_URL}/rules): full tournament rules
+- [Free backlinks](${SITE_URL}/free-backlinks): what a brand gets for free by entering
+- [Blog](${SITE_URL}/blog): guides on backlinks and launching for founders
+
+## Guides
+
+${guides}
+
+## Comparisons
+
+${compare}
 `;
 
   return new Response(body, { headers: { "Content-Type": "text/plain; charset=utf-8" } });

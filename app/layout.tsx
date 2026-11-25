@@ -25,11 +25,11 @@ const body = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Backlink Arena: Launch Your SaaS & Win DA 50+ Backlinks",
+    default: "Backlink Arena: Launch Your SaaS, Win a Free DA 50+ Backlink",
     template: "%s · Backlink Arena",
   },
   description:
-    "Launch your SaaS in free 1v1 tournaments, compete for visibility, and get real user votes, traffic, and backlinks. The champion wins a DA 50+ backlink.",
+    "Enter your SaaS free, battle other founders in 1v1 votes, and get real traffic. The tournament champion wins a backlink on a real DA 50+ site in their niche.",
   openGraph: { siteName: "Backlink Arena", type: "website" },
   twitter: { card: "summary_large_image" },
   // Google Search Console "HTML tag" verification (only needed if you don't verify via DNS).

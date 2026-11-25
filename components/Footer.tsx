@@ -29,6 +29,9 @@ export function Footer() {
         <nav className="flex flex-wrap gap-x-4 gap-y-2 font-semibold text-ink">
           <Link href="/services">Services</Link>
           <Link href="/winners">Winners</Link>
+          <Link href="/free-backlinks">Free backlinks</Link>
+          <Link href="/blog">Blog</Link>
+          <Link href="/compare">Compare</Link>
           <Link href="/founders">Our story</Link>
           <Link href="/rules">Rules</Link>
           <Link href="/privacy">Privacy</Link>
