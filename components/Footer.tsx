@@ -6,11 +6,11 @@ import { SUPABASE_CONFIGURED } from "@/lib/env";
 // Launch badges shown in the footer. To remove one, delete its line (or comment it out).
 const LAUNCH_BADGES = [
   {
-    href: "https://submityourstartup.now/s/backlink-arena",
-    src: "https://submityourstartup.now/s/backlink-arena/badge.png",
-    alt: "Backlink Arena: launched on Submit Your Startup",
-    width: 260,
-    height: 60,
+    href: "https://followx.today/b/backlinkarena.com",
+    src: "https://followx.today/api/badge/backlinkarena.com.svg?theme=dark",
+    alt: "Featured on FollowX.today",
+    width: 250,
+    height: 54,
   },
 ];
 
