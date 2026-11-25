@@ -84,7 +84,8 @@ export const SERVICES: Service[] = [
     cta: "Request a quote",
     dark: true,
     image: {
-      src: "/press/press-fan.webp",
+      // Transparent background so it blends into the dark card (original: press-fan.webp).
+      src: "/press/press-fan-cutout.webp",
       width: 1556,
       height: 672,
       alt: "Illustration of brand features in online news media",

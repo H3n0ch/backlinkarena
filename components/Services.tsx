@@ -110,7 +110,7 @@ export function Services({ page = false }: { page?: boolean }) {
                 height={s.image.height}
                 alt={s.image.alt}
                 sizes="(min-width: 768px) 480px, 100vw"
-                className={`mt-5 h-auto w-full rounded-xl ring-1 ${s.dark ? "ring-white/10" : "ring-line"}`}
+                className={`mt-5 h-auto w-full ${s.dark ? "" : "rounded-xl ring-1 ring-line"}`}
               />
             )}
 
