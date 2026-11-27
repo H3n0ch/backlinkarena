@@ -8,6 +8,8 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { roundName } from "@/lib/time";
 import { cleanRef, safeHttpUrl } from "@/lib/url";
+import { getTournamentSponsor } from "@/lib/sponsors";
+import { SponsorCard } from "@/components/SponsorCard";
 import { TrackView } from "@/components/Track";
 import { MatchArena, type ArenaProduct } from "./MatchArena";
 
@@ -88,6 +90,7 @@ export async function MatchScreen({
     nextMatchId = rest[0] ?? null;
     allDone = Boolean(votedFor) && rest.length === 0;
   }
+  const sponsor = await getTournamentSponsor(tournament.id);
   const ownsA = Boolean(user && a?.owner_id === user.id);
   const ownsB = Boolean(user && b?.owner_id === user.id);
   const path = matchPath(match, a?.slug, b?.slug);
@@ -111,6 +114,7 @@ export async function MatchScreen({
       refSlug={ref}
       shareLink={matchShareUrl(path, ownsA ? a?.slug : ownsB ? b?.slug : ref)}
     />
+    {(sponsor || tournament.status !== "finished") && <SponsorCard sponsor={sponsor} tournamentName={tournament.name} className="my-8" />}
     </>
   );
 }

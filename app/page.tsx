@@ -5,10 +5,12 @@ import { HeroVideo } from "@/components/HeroVideo";
 import { GOLD_TEXT, PREMIUM_FRAME } from "@/components/premium";
 import { ProductLogo } from "@/components/ProductLogo";
 import { Services } from "@/components/Services";
+import { SponsorCard } from "@/components/SponsorCard";
 import { TournamentSection } from "@/components/TournamentSection";
 import { WallOfLove } from "@/components/WallOfLove";
 import { faqSchema, JsonLd } from "@/lib/json-ld";
 import { getArenaStats, getCurrentOrLastTournament, getRecentProducts, getWinners } from "@/lib/data";
+import { getTournamentSponsor } from "@/lib/sponsors";
 
 export default function Home() {
   return (
@@ -231,7 +233,16 @@ async function SocialProof() {
 /* ------------------------------------------------------------ Tournament */
 
 async function Tournament() {
-  return <TournamentSection tournament={await getCurrentOrLastTournament()} carousel />;
+  const tournament = await getCurrentOrLastTournament();
+  const sponsor = await getTournamentSponsor(tournament?.id);
+  // An open slot is only advertised while the tournament still runs.
+  const showSponsor = sponsor || (tournament && tournament.status !== "finished");
+  return (
+    <>
+      {showSponsor && <SponsorCard sponsor={sponsor} tournamentName={tournament?.name} className="mb-8" />}
+      <TournamentSection tournament={tournament} carousel />
+    </>
+  );
 }
 
 /* ----------------------------------------------------------- Past winners */
@@ -345,37 +356,37 @@ function Pricing() {
       </p>
 
       <div className="mx-auto mt-10 grid max-w-4xl gap-4 md:grid-cols-2">
-        <div className="relative flex flex-col overflow-hidden rounded-[0.875rem] bg-dark-gradient p-6 text-white shadow-[0_24px_60px_-24px_rgb(234_88_12/0.6)] ring-1 ring-white/10">
-          <span aria-hidden="true" className="line-gradient absolute inset-x-0 top-0" />
-          <span className="absolute right-4 top-4 rounded-full bg-[image:var(--grad-brand)] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider shadow">
-            Most popular
-          </span>
-          <p className="headline text-2xl">Badge + share</p>
-          <p className="mt-1 text-sm text-white/70">Help spread the word, get your seat.</p>
+        <div className="card flex flex-col p-6">
+          <p className="font-display text-2xl font-extrabold">Badge + share</p>
+          <p className="mt-1 text-sm text-muted">Help spread the word, get your seat.</p>
           <p className="mt-4 font-display text-4xl font-extrabold">$0</p>
           <ul className="mt-5 flex flex-1 flex-col gap-2 text-sm">
             <li><Check />Add our badge to your site</li>
             <li><Check />Share 2 public posts about us</li>
             <li><Check />Seat in every tournament while the badge is live</li>
           </ul>
-          <Link
-            href="/join?plan=badge"
-            className="btn mt-6 bg-[image:var(--grad-brand)] text-white shadow-[0_10px_24px_-10px_rgb(234_88_12/0.8)] hover:brightness-110"
-          >
+          <Link href="/join?plan=badge" className="btn mt-6 bg-red text-white">
             Add the badge →
           </Link>
         </div>
 
-        <div className="card flex flex-col p-6">
-          <p className="font-display text-2xl font-extrabold">Guaranteed spot</p>
-          <p className="mt-1 text-sm text-muted">No badge, no posts. Just play.</p>
+        <div className="relative flex flex-col overflow-hidden rounded-[0.875rem] bg-dark-gradient p-6 text-white shadow-[0_24px_60px_-24px_rgb(234_88_12/0.6)] ring-1 ring-white/10">
+          <span aria-hidden="true" className="line-gradient absolute inset-x-0 top-0" />
+          <span className="absolute right-4 top-4 rounded-full bg-[image:var(--grad-brand)] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider shadow">
+            Most popular
+          </span>
+          <p className="headline text-2xl">Guaranteed spot</p>
+          <p className="mt-1 text-sm text-white/70">No badge, no posts. Just play.</p>
           <p className="mt-4 font-display text-4xl font-extrabold">$29</p>
           <ul className="mt-5 flex flex-1 flex-col gap-2 text-sm">
             <li><Check />Nothing to add to your site</li>
             <li><Check />Seat in one tournament</li>
             <li><Check />Paid while no tournament is open? It counts for the next one</li>
           </ul>
-          <Link href="/join?plan=pass" className="btn mt-6 bg-red text-white">
+          <Link
+            href="/join?plan=pass"
+            className="btn mt-6 bg-[image:var(--grad-brand)] text-white shadow-[0_10px_24px_-10px_rgb(234_88_12/0.8)] hover:brightness-110"
+          >
             Pay $29 →
           </Link>
         </div>

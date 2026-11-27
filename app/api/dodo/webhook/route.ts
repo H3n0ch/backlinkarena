@@ -1,6 +1,6 @@
 import type { UnwrapWebhookEvent } from "dodopayments/resources/webhooks/webhooks";
 import { dodo } from "@/lib/dodo";
-import { recordPaidPass, refundPaidPass } from "@/lib/payments";
+import { recordPaidPass, recordPaidSponsorship, refundPaidPass, refundSponsorship } from "@/lib/payments";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
 /**
@@ -31,11 +31,25 @@ export async function POST(request: Request) {
   if (event.type === "refund.succeeded") {
     const refund = event.data;
     if (refund.is_partial) return new Response("partial refund ignored");
-    return refundPaidPass(db, { provider: "dodo", paymentRef: refund.payment_id });
+    const ref = { provider: "dodo", paymentRef: refund.payment_id } as const;
+    return (await refundSponsorship(db, ref)) ?? refundPaidPass(db, ref);
   }
 
   if (event.type !== "payment.succeeded") return new Response("ignored");
   const payment = event.data;
+
+  if (payment.metadata?.kind === "sponsorship") {
+    const sponsorshipId = payment.metadata.sponsorship_id;
+    if (typeof sponsorshipId !== "string" || !sponsorshipId) return new Response("no sponsorship");
+    return recordPaidSponsorship(db, {
+      provider: "dodo",
+      sponsorshipId,
+      paymentRef: payment.payment_id,
+      amount: payment.total_amount,
+      currency: payment.currency,
+    });
+  }
+
   const productId = payment.metadata?.product_id;
   if (typeof productId !== "string" || !productId) return new Response("no product");
   const userId = payment.metadata?.user_id;

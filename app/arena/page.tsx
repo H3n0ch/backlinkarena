@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { SponsorCard } from "@/components/SponsorCard";
 import { TournamentSection } from "@/components/TournamentSection";
 import { getCurrentOrLastTournament } from "@/lib/data";
+import { getTournamentSponsor } from "@/lib/sponsors";
 
 export const metadata: Metadata = {
   title: "Arena",
@@ -19,5 +21,14 @@ export default function ArenaPage() {
 }
 
 async function Arena() {
-  return <TournamentSection tournament={await getCurrentOrLastTournament()} stadium />;
+  const tournament = await getCurrentOrLastTournament();
+  const sponsor = await getTournamentSponsor(tournament?.id);
+  // An open slot is only advertised while the tournament still runs.
+  const showSponsor = sponsor || (tournament && tournament.status !== "finished");
+  return (
+    <>
+      {showSponsor && <SponsorCard sponsor={sponsor} tournamentName={tournament?.name} className="mb-8" />}
+      <TournamentSection tournament={tournament} stadium />
+    </>
+  );
 }

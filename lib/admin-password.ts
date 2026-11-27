@@ -1,5 +1,6 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { io } from "next/cache";
 import { cookies } from "next/headers";
 
 // Second lock on /admin: besides an admin account, the ADMIN_PASSWORD env var.
@@ -55,6 +56,8 @@ export async function hasAdminPasswordSession(userId: string): Promise<boolean> 
   if (!raw) return false;
   const [expStr, sig] = raw.split(".");
   const exp = Number(expStr);
+  // Reading the clock: keep this out of prerenders (runtime prefetches can have cookies).
+  await io();
   if (!sig || !Number.isInteger(exp) || exp * 1000 < Date.now()) return false;
   return safeEqual(sig, sign(userId, exp, key));
 }

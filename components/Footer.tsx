@@ -12,6 +12,13 @@ const LAUNCH_BADGES = [
     width: 250,
     height: 54,
   },
+  {
+    href: "https://indiechains.com/s/backlinkarena",
+    src: "https://api.indiechains.com/badge/61210d06eb647209d7d93ec0154118010bc9d3f9c899125b.svg?theme=dark",
+    alt: "Linked with Indie Chains",
+    width: 180,
+    height: 40,
+  },
 ];
 
 export function Footer() {
@@ -28,6 +35,7 @@ export function Footer() {
         <p>Backlink Arena · Strong backlinks for everyone.</p>
         <nav className="flex flex-wrap gap-x-4 gap-y-2 font-semibold text-ink">
           <Link href="/services">Services</Link>
+          <Link href="/sponsor">Sponsor</Link>
           <Link href="/winners">Winners</Link>
           <Link href="/free-backlinks">Free backlinks</Link>
           <Link href="/blog">Blog</Link>

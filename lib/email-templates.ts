@@ -226,6 +226,72 @@ export function badgeRejectedEmail(o: { name: string; page: string; siteUrl: str
 }
 
 // ---------------------------------------------------------------------------
+// Sponsorships (/sponsor, lib/payments.ts, app/actions/sponsor.ts)
+// ---------------------------------------------------------------------------
+
+export type SponsorInfo = { brandName: string; website: string; tagline: string; email: string };
+
+/** To the admin when a sponsorship is paid and waits for review. */
+export function sponsorAdminEmail(s: SponsorInfo, siteUrl: string): Rendered {
+  const items: [string, string][] = [
+    ["Brand", s.brandName],
+    ["Website", s.website],
+    ["Tagline", s.tagline],
+    ["Email", s.email],
+  ];
+  const subject = `New sponsor paid: ${s.brandName}`;
+  const html = layout({
+    title: subject,
+    preheader: `${s.brandName} paid for a tournament sponsorship. Review it in admin.`,
+    body:
+      eyebrow("New sponsor") +
+      h1(s.brandName) +
+      p("paid for a tournament sponsorship. Check the link and tagline, then approve it for a tournament (or reject and refund).") +
+      rows(items) +
+      button(`${siteUrl}/admin/sponsors`, "Review sponsor"),
+    footer: "Admin notification from Backlink Arena.",
+  });
+  const text = `${subject}\n\n${items.map(([k, v]) => `${k}: ${v}`).join("\n")}\n\nReview: ${siteUrl}/admin/sponsors`;
+  return { subject, html, text };
+}
+
+/** To the sponsor right after paying. */
+export function sponsorConfirmEmail(s: SponsorInfo): Rendered {
+  const subject = `Payment received: ${s.brandName} is sponsoring Backlink Arena`;
+  const html = layout({
+    title: subject,
+    preheader: "We'll review your sponsorship within one business day.",
+    body:
+      eyebrow("Payment received") +
+      h1("Thanks for sponsoring", s.brandName) +
+      p("We'll review your link and tagline within one business day, then put it live in the next tournament with an open sponsor slot. We'll email you when it's live.") +
+      panel(`<strong style="color:#fbbf24">${esc(s.brandName)}</strong><br>${esc(s.tagline)}`) +
+      p("If we can't run it, you get a full refund. Want to change something? Just reply to this email.", { muted: true }),
+    footer: "You're getting this because you bought a sponsorship on Backlink Arena.",
+  });
+  const text = `Thanks for sponsoring Backlink Arena!\n\nWe'll review your link and tagline within one business day, then put ${s.brandName} live in the next tournament with an open sponsor slot. We'll email you when it's live.\n\nIf we can't run it, you get a full refund. Reply to this email to change anything.`;
+  return { subject, html, text };
+}
+
+/** To the sponsor once the admin approved it for a tournament. */
+export function sponsorApprovedEmail(o: { brandName: string; tournament: string; siteUrl: string }): Rendered {
+  const subject = `${o.brandName} is sponsoring ${o.tournament}`;
+  const html = layout({
+    title: subject,
+    preheader: `Your sponsorship is approved for ${o.tournament}.`,
+    body:
+      eyebrow("Sponsorship approved") +
+      h1(o.brandName, `sponsors ${o.tournament}`) +
+      p("Your brand is shown on the arena and on every matchup page of this tournament, in front of every competing founder and everyone who votes.") +
+      button(`${o.siteUrl}/arena`, "See it live") +
+      p("Questions? Just reply to this email.", { muted: true }),
+    footer: "You're getting this because you bought a sponsorship on Backlink Arena.",
+  });
+  const text = `${subject}\n\nYour brand is shown on the arena and every matchup page of this tournament.\n\nSee it: ${o.siteUrl}/arena`;
+  return { subject, html, text };
+}
+
+// ---------------------------------------------------------------------------
 // Tournament emails (sent automatically by lib/tournament-emails.ts)
 // ---------------------------------------------------------------------------
 
